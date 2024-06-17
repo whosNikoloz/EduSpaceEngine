@@ -434,9 +434,11 @@ C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\staticwebass
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\staticwebassets\msbuild.buildTransitive.LearnAPI.props
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\staticwebassets.pack.json
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\scopedcss\bundle\LearnAPI.styles.css
-C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\LearnAPI.csproj.CopyComplete
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\LearnAPI.dll
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\refint\LearnAPI.dll
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\LearnAPI.pdb
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\LearnAPI.genruntimeconfig.cache
 C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\ref\LearnAPI.dll
+C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\bin\Debug\net7.0\AutoMapper.dll
+C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\bin\Debug\net7.0\AutoMapper.Extensions.Microsoft.DependencyInjection.dll
+C:\Users\User\source\repos\EduSpaceEngine\LearnAPI\obj\Debug\net7.0\LearnAPI.csproj.Up2Date

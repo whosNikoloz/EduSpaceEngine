@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Cors;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Diagnostics.Metrics;
 using System;
+using AutoMapper;
 
 namespace LearnAPI.Controllers
 {
@@ -26,11 +27,13 @@ namespace LearnAPI.Controllers
     {
         private readonly LearnDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IMapper _mapper;
 
-        public UserController(LearnDbContext context, IConfiguration configuration)
+        public UserController(LearnDbContext context, IConfiguration configuration,IMapper mapper)
         {
             _configuration = configuration;
             _context = context;
+            _mapper = mapper;
         }
 
 
@@ -61,6 +64,11 @@ namespace LearnAPI.Controllers
                 .Include(u => u.Comments)
                 .Include(u => u.Progresses)
                 .FirstOrDefaultAsync(u => u.UserId == userid);
+
+            if (user == null)
+            {
+                return BadRequest("No User");
+            }
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
@@ -93,10 +101,7 @@ namespace LearnAPI.Controllers
                 Token = jwttoken
             };
 
-            if (user == null)
-            {
-                return BadRequest("No User");
-            }
+            
             return Ok(response);
         }
 
@@ -196,18 +201,12 @@ namespace LearnAPI.Controllers
 
             CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
-            var user = new UserModel
-            {
-                Email = request.Email,
-                UserName = request.UserName,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                OAuthProvider = null,
-                OAuthProviderId = null,
-                PasswordHash = passwordHash,
-                PasswordSalt = passwordSalt,
-                VerificationToken = CreateRandomToken()
-            };
+            UserModel user = _mapper.Map<UserRegisterRequest, UserModel>(request);
+            user.OAuthProvider = null;
+            user.OAuthProviderId = null;
+            user.PasswordHash = passwordHash;
+            user.PasswordSalt = passwordSalt;
+            user.VerificationToken = CreateRandomToken();
 
             if (!_context.Users.Any())
             {
@@ -218,11 +217,18 @@ namespace LearnAPI.Controllers
                 user.Role = "user"; // Assign "user" role
             }
 
+            try { 
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+                await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
+                return StatusCode(500, "An error occurred while saving changes.");
+            }
 
-            string host = "192.168.1.56:45455";
+            string host = "localhost:44310";
 
             string verificationLink = Url.ActionLink("VerifyEmail", "User", new { token = user.VerificationToken }, Request.Scheme, host);
 
@@ -253,18 +259,12 @@ namespace LearnAPI.Controllers
             var uniqueUsername = GenerateUniqueUsername(firstName, lastName);
 
 
-            // Create a new user record
-            var user = new UserModel
-            {
-                Email = request.email,
-                UserName = uniqueUsername,
-                FirstName = firstName,
-                LastName = lastName,
-                Picture = request.picture,
-                OAuthProvider = request.oAuthProvider,
-                OAuthProviderId = request.oAuthProviderId,
-                VerificationToken = CreateRandomToken()
-            };
+            UserModel user = _mapper.Map<OAuthUserRegisterRequest, UserModel>(request);
+            user.VerificationToken = CreateRandomToken();
+            user.UserName = uniqueUsername;
+            user.FirstName = firstName;
+            user.LastName = lastName;
+
 
             if (!_context.Users.Any())
             {
@@ -279,8 +279,18 @@ namespace LearnAPI.Controllers
             user.VerifiedAt = DateTime.Now;
 
             // Save the new user to the database
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+
+            try
+            {
+
+                await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
+                return StatusCode(500, "An error occurred while saving changes.");
+            }
 
             return Ok("OAuth2 User successfully registered.");
         }
@@ -328,8 +338,17 @@ namespace LearnAPI.Controllers
                 return BadRequest("use not Found");
             }
 
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
+            try { 
+
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
+                return StatusCode(500, "An error occurred while saving changes.");
+            }
+
 
             return Ok("user Rmeoved");
         }
@@ -391,7 +410,7 @@ namespace LearnAPI.Controllers
             }
 
             var user = await _context.Users
-    .FirstOrDefaultAsync(u => u.OAuthProvider == reqeust.OAuthProvider && u.OAuthProviderId == reqeust.OAuthProviderId);
+                .FirstOrDefaultAsync(u => u.OAuthProvider == reqeust.OAuthProvider && u.OAuthProviderId == reqeust.OAuthProviderId);
 
             if (user == null)
             {
