@@ -1,6 +1,78 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
+﻿# Temporary Files
+*.swp
+*.*~
 
-/LearnAPI/Migrations/20240310095536_addedd two language ka and en on this models 
-/LearnAPI/Migrations/20240310095904_adedd two language ka and en on this models 
+# Project Lock Files
+project.lock.json
+
+# System-Specific Configuration Files
+.DS_Store  # macOS
+thumbs.db   # Windows
+desktop.ini # Windows
+
+# IDE-Specific Files
+.vscode/
+.idea/
+.vs/
+.fleet/
+.cr/
+
+# Build Output Directories
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+
+# Build Logs
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# User-Specific Configuration Files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Common Hidden Directories
+.git/
+.svn/
+.hg/
+CVS/
+npm-debug.log
+
+# Environment-Specific Files
+.env
+.env.local
+.env.development
+.env.production
+
+# Test Coverage Data
+coverage/
+jest/coverage/
+
+# Documentation Output
+docs/
+
+# IDE-Specific Cache Directories
+.yarn/cache
+node_modules/
+# (Adjust these paths for other package managers)
+
+# Linter Caches
+.eslintcache
+
+# IDE-Specific Project Configuration
+.idea/workspace.xml  # Rider
+# (Adjust for other IDEs)
+
+# Exclude any additional files or directories as needed
+# For example, to exclude specific image files:
+# !important_image.jpg

@@ -71,7 +71,7 @@ namespace LearnAPI.Controllers
 
             if(user.OAuthProvider != null)
             {
-                user.Email = user.Email + "(Oauth)";
+                user.Email = $"{user.Email} ({user.OAuthProvider})";
             }
             
 
@@ -354,7 +354,7 @@ namespace LearnAPI.Controllers
             {
                 return BadRequest("User not found.");
             }
-            user.Email = user.Email + "(Oauth)";
+            user.Email = user.Email + "(" + user.OAuthProvider + ")";
 
             // Normally, OAuth2 authentication would have already occurred, and you'd have an access token
             // and user information from the OAuth2 provider.
