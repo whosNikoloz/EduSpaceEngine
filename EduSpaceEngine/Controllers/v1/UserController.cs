@@ -114,6 +114,38 @@ namespace EduSpaceEngine.Controllers
         }
 
 
+        [HttpDelete("User/{userid}"), Authorize]
+        public async Task<IActionResult> DeleteUser(int userid)
+        {
+            var user = await _context.Users
+                .Include(u => u.Notifications)  // Include related notifications
+                .Include(u => u.Posts)          // Include related posts
+                    .ThenInclude(p => p.Comments) // Include comments related to each post
+                .FirstOrDefaultAsync(u => u.UserId == userid);
+
+            if (user == null)
+            {
+                return BadRequest("User not Found");
+            }
+
+            // Remove notifications
+            _context.Notifications.RemoveRange(user.Notifications);
+
+            // Remove posts and their comments
+            foreach (var post in user.Posts)
+            {
+                _context.Comments.RemoveRange(post.Comments);
+            }
+            _context.Posts.RemoveRange(user.Posts);
+
+            // Remove the user
+            _context.Users.Remove(user);
+
+            await _context.SaveChangesAsync();
+
+            return Ok("User and related entities deleted");
+        }
+
 
 
         [HttpPost("Auth/Login/check-email")]
