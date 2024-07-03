@@ -1,0 +1,6 @@
+@EduSpaceEngine_HostAddress = http://localhost:5025
+
+GET {{EduSpaceEngine_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
