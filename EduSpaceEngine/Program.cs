@@ -84,7 +84,7 @@ builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("eduspaceApp", builder =>
     {
-        builder.WithOrigins("https://edu-space.vercel.app", "http://localhost:3000", "http://localhost:4200")
+        builder.WithOrigins("https://edu-space.vercel.app", "http://localhost:3000", "http://localhost:4200", "https://localhost:53377")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials();

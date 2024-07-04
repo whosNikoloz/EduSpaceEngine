@@ -1,0 +1,32 @@
+version: '3.4'
+
+services:
+  eduspaceengine:
+    image: ${DOCKER_REGISTRY-}eduspaceengine
+    build:
+      context: .
+      dockerfile: EduSpaceEngine/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=EduSpacedb;User=sa;Password=1Secure*Password1;Integrated Security=True;Encrypt=True;TrustServerCertificate=True
+      - AppSettings__Token=APH3x8L9XdyIVsZ-x-AI6=1HZYtriG!-WHK=DeFEjTktnwb!HK1pqDoLDFePhB-uYm06bKIVSqugYWhc83cO1xKO=v?3JRlkPXYBR?aP5Lg-YIqlAKQ200ZN/Aj1ZU!x?GGpuqIs6rLNcSsx!ETliY?R-TuIX4iI4RYelU=TwaCO3K3DcbMM?eTY3kKJsOzfYnva8sH4YRbXD?C0OC?y2e-?g8o6UDrBE19Y01E68lzsgKjxE5O0/=H?te?UlijK
+    ports:
+      - "8000:80" # Map port 80 in the container to port 8000 on the host
+    depends_on:
+      - db
+    networks:
+      - eduspace-net
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "1Secure*Password1"  # Adjusted password to match your connection string
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433" # Map port 1433 in the container to port 1433 on the host
+    networks:
+      - eduspace-net
+
+networks:
+  eduspace-net:
+    driver: bridge

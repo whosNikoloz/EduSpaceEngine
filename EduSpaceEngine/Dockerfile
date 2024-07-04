@@ -1,27 +1,24 @@
-# Use the official ASP.NET core image as base image
+#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+USER app
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
+EXPOSE 8080
+EXPOSE 8081
 
-# Use the SDK image for building the application
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-
-# Copy the project file and restore dependencies
-COPY ["EduSpaceEngine.csproj", "./"]
-RUN dotnet restore "./EduSpaceEngine.csproj"
-
-# Copy the entire solution and build the application
+COPY ["EduSpaceEngine/EduSpaceEngine.csproj", "EduSpaceEngine/"]
+RUN dotnet restore "./EduSpaceEngine/EduSpaceEngine.csproj"
 COPY . .
-WORKDIR "/src/."
-RUN dotnet build "EduSpaceEngine.csproj" -c Release -o /app/build
+WORKDIR "/src/EduSpaceEngine"
+RUN dotnet build "./EduSpaceEngine.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Publish the application
 FROM build AS publish
-RUN dotnet publish "EduSpaceEngine.csproj" -c Release -o /app/publish /p:UseAppHost=false
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./EduSpaceEngine.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Final stage for the production image
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
