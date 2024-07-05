@@ -72,8 +72,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 
-builder.Services.AddDbContext<DataDbContext>(options => options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<DataDbContext>(
+                       options =>
+                       {
+                           var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+                           if (!builder.Environment.IsDevelopment())
+                           {
+                               var password = Environment.GetEnvironmentVariable("MSSQL_SA_PASSWORD");
+                               connectionString = string.Format(connectionString, password);
+                           }
+                           options.UseSqlServer(connectionString);
+
+                       });
 
 
 builder.Services.AddSignalR();
@@ -126,6 +136,12 @@ app.MapControllers();
 
 app.MapHub<NotificationHub>("/notificationHub");
 app.MapHub<CommentHub>("/commentHub");
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<DataDbContext>();
+    db.Database.Migrate();
+}
 
 
 app.Run();
