@@ -106,8 +106,8 @@ builder.Services.AddCors(opt =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+//if (app.Environment.IsDevelopment())
+//{
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
@@ -121,7 +121,7 @@ if (app.Environment.IsDevelopment())
             options.SwaggerEndpoint(url, name);
         }
     });
-}
+//}
 
 app.UseHttpsRedirection();
 
@@ -137,11 +137,11 @@ app.MapControllers();
 app.MapHub<NotificationHub>("/notificationHub");
 app.MapHub<CommentHub>("/commentHub");
 
-using (var scope = app.Services.CreateScope())
+/*using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<DataDbContext>();
     db.Database.Migrate();
-}
+}*/
 
 
 app.Run();
