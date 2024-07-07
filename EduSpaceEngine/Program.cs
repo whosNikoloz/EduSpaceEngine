@@ -3,23 +3,27 @@ using EduSpaceEngine.Data;
 using EduSpaceEngine.Hubs;
 using EduSpaceEngine.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Filters;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Globalization;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
 builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
 
@@ -72,7 +76,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 
-builder.Services.AddDbContext<DataDbContext>(
+/*builder.Services.AddDbContext<DataDbContext>(
                        options =>
                        {
                            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -83,8 +87,12 @@ builder.Services.AddDbContext<DataDbContext>(
                            }
                            options.UseSqlServer(connectionString);
 
-                       });
+                       });*/
 
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddDbContext<DataDbContext>(options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
 builder.Services.AddSignalR();
 
@@ -106,8 +114,8 @@ builder.Services.AddCors(opt =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
@@ -121,7 +129,7 @@ var app = builder.Build();
             options.SwaggerEndpoint(url, name);
         }
     });
-//}
+}
 
 app.UseHttpsRedirection();
 
@@ -134,14 +142,83 @@ app.UseCors("eduspaceApp");
 
 app.MapControllers();
 
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+
 app.MapHub<NotificationHub>("/notificationHub");
 app.MapHub<CommentHub>("/commentHub");
 
-/*using (var scope = app.Services.CreateScope())
+using (var scope = app.Services.CreateScope())
 {
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     var db = scope.ServiceProvider.GetRequiredService<DataDbContext>();
-    db.Database.Migrate();
-}*/
+
+    try
+    {
+        var retries = 5; // Number of retry attempts
+        var delay = TimeSpan.FromSeconds(5); // Delay between retries
+
+        for (int i = 0; i < retries; i++)
+        {
+            try
+            {
+                // Check if the database exists, create if not
+                await CreateDatabaseIfNotExistsAsync(db, logger);
+
+                var canConnect = await db.Database.CanConnectAsync();
+                if (!canConnect)
+                {
+                    logger.LogError("Failed to connect to the database.");
+                    throw new Exception("Failed to connect to the database.");
+                }
+
+                await db.Database.MigrateAsync(); // Asynchronous migration
+
+                var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
+                logger.LogInformation("Database migration successful.!!!!!");
+                break; // Exit the retry loop if successful
+            }
+            catch (SqlException ex) when (ex.Number == 18456)
+            {
+                logger.LogError(ex, "Login failed for user. Check SQL Server credentials.");
+                throw; // Re-throw the exception to ensure the application exits gracefully
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error occurred during database migration. Retrying...");
+                await Task.Delay(delay);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to migrate database.");
+        throw; // Re-throw the exception to ensure the application exits gracefully
+    }
+}
 
 
 app.Run();
+
+
+
+
+// Helper method to create database if it doesn't exist
+async Task CreateDatabaseIfNotExistsAsync(DataDbContext db, ILogger logger)
+{
+    if (!await db.Database.CanConnectAsync())
+    {
+        try
+        {
+            logger.LogInformation("Database does not exist. Attempting to create...");
+
+            await db.Database.EnsureCreatedAsync(); // Creates the database and its schema
+
+            logger.LogInformation("Database created successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create database.");
+            throw; // Re-throw the exception to ensure the application exits gracefully
+        }
+    }
+}

@@ -15,6 +15,34 @@ services:
     ports:
       - 5000:8080
 
+
+
+
+# version: '3.8'
+
+# services:
+#   eduspaceengine:
+#     container_name: eduspace-web-api-container
+#     image: nikoloza022/eduspace-api
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     environment:
+#       - MSSQL_SA_PASSWORD=Password1*
+#       - AppSettings__Token=APH3x8L9XdyIVsZ-x-AI6=1HZYtriG!-WHK=DeFEjTktnwb!HK1pqDoLDFePhB-uYm06bKIVSqugYWhc83cO1xKO=v?3JRlkPXYBR?aP5Lg-YIqlAKQ200ZN/Aj1ZU!x?GGpuqIs6rLNcSsx!ETliY?R-TuIX4iI4RYelU=TwaCO3K3DcbMM?eTY3kKJsOzfYnva8sH4YRbXD?C0OC?y2e-?g8o6UDrBE19Y01E68lzsgKjxE5O0/=H?te?UlijK
+#     ports:
+#       - "5000:8080"
+#     depends_on:
+#       - eduspace-sqlserver   
+#   eduspace-sqlserver:
+#     container_name: eeduspace-sqlserver-container
+#     image: mcr.microsoft.com/mssql/server:2022-latest
+#     environment:
+#       - ACCEPT_EULA=Y
+#       - MSSQL_SA_PASSWORD=Password1*
+#     ports:
+#       - "1433:1433"
+
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
 # start the database before your application. The `db-data` volume persists the
