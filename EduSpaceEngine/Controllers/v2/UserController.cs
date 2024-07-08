@@ -267,7 +267,7 @@ namespace EduSpaceEngine.Controllers.v2
                 return StatusCode(500, "An error occurred while saving changes.");
             }
 
-            string host = "localhost:44310";
+            string host = "185.139.57.56:8000";
 
             string verificationLink = Url.ActionLink("VerifyEmail", "User", new { token = user.VerificationToken }, Request.Scheme, host);
 
