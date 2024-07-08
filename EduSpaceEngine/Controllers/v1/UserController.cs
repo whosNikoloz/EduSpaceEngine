@@ -805,7 +805,7 @@ namespace EduSpaceEngine.Controllers
             user.VerifiedAt = DateTime.Now;
             await _context.SaveChangesAsync();
 
-            string verificationSuccessUrl = "http://localhost:3000/user/auth/verification-successful";
+            string verificationSuccessUrl = "https://edu-space.vercel.app/en/user/auth/verification-successful";
 
             // Redirect the user to the verification success URL
             return Redirect(verificationSuccessUrl);
@@ -834,7 +834,7 @@ namespace EduSpaceEngine.Controllers
             user.PasswordResetToken = CreateRandomToken();
             user.ResetTokenExpires = DateTime.Now.AddDays(1);
 
-            string returnUrl = "http://localhost:3000/ka/user/reset-password";
+            string returnUrl = "https://edu-space.vercel.app/en/user/reset-password";
 
             string verificationLink = $"{returnUrl}?token={user.PasswordResetToken}";
 
