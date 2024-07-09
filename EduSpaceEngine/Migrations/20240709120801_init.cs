@@ -39,28 +39,6 @@ namespace EduSpaceEngine.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "Tests",
-                columns: table => new
-                {
-                    TestId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Instruction = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Question = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Code = table.Column<string>(type: "longtext", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    Hint = table.Column<string>(type: "longtext", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    LearnId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Tests", x => x.TestId);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -128,29 +106,6 @@ namespace EduSpaceEngine.Migrations
                         column: x => x.LevelId,
                         principalTable: "Levels",
                         principalColumn: "LevelId",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "TestAnswers",
-                columns: table => new
-                {
-                    AnswerId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Option = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    IsCorrect = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    TestId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TestAnswers", x => x.AnswerId);
-                    table.ForeignKey(
-                        name: "FK_TestAnswers_Tests_TestId",
-                        column: x => x.TestId,
-                        principalTable: "Tests",
-                        principalColumn: "TestId",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
@@ -348,11 +303,6 @@ namespace EduSpaceEngine.Migrations
                         principalTable: "Lessons",
                         principalColumn: "LessonId",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Learn_Tests_TestId",
-                        column: x => x.TestId,
-                        principalTable: "Tests",
-                        principalColumn: "TestId");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -399,6 +349,34 @@ namespace EduSpaceEngine.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "Tests",
+                columns: table => new
+                {
+                    TestId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    Instruction = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Question = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Code = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Hint = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    LearnId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tests", x => x.TestId);
+                    table.ForeignKey(
+                        name: "FK_Tests_Learn_LearnId",
+                        column: x => x.LearnId,
+                        principalTable: "Learn",
+                        principalColumn: "LearnId",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "Videos",
                 columns: table => new
                 {
@@ -420,6 +398,29 @@ namespace EduSpaceEngine.Migrations
                         column: x => x.LearnId,
                         principalTable: "Learn",
                         principalColumn: "LearnId");
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "TestAnswers",
+                columns: table => new
+                {
+                    AnswerId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    Option = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsCorrect = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    TestId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TestAnswers", x => x.AnswerId);
+                    table.ForeignKey(
+                        name: "FK_TestAnswers_Tests_TestId",
+                        column: x => x.TestId,
+                        principalTable: "Tests",
+                        principalColumn: "TestId",
+                        onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -447,12 +448,6 @@ namespace EduSpaceEngine.Migrations
                 name: "IX_Learn_LessonId",
                 table: "Learn",
                 column: "LessonId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Learn_TestId",
-                table: "Learn",
-                column: "TestId",
-                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Lessons_SubjectId",
@@ -500,6 +495,12 @@ namespace EduSpaceEngine.Migrations
                 column: "TestId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Tests_LearnId",
+                table: "Tests",
+                column: "LearnId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Videos_LearnId",
                 table: "Videos",
                 column: "LearnId",
@@ -531,16 +532,16 @@ namespace EduSpaceEngine.Migrations
                 name: "Posts");
 
             migrationBuilder.DropTable(
-                name: "Learn");
+                name: "Tests");
 
             migrationBuilder.DropTable(
                 name: "Users");
 
             migrationBuilder.DropTable(
-                name: "Lessons");
+                name: "Learn");
 
             migrationBuilder.DropTable(
-                name: "Tests");
+                name: "Lessons");
 
             migrationBuilder.DropTable(
                 name: "Subjects");

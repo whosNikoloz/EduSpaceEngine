@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EduSpaceEngine.Migrations
 {
     [DbContext(typeof(DataDbContext))]
-    [Migration("20240707092922_init")]
+    [Migration("20240709120801_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -231,9 +231,6 @@ namespace EduSpaceEngine.Migrations
 
                     b.HasIndex("LessonId");
 
-                    b.HasIndex("TestId")
-                        .IsUnique();
-
                     b.ToTable("Learn");
                 });
 
@@ -288,6 +285,9 @@ namespace EduSpaceEngine.Migrations
                         .HasColumnType("longtext");
 
                     b.HasKey("TestId");
+
+                    b.HasIndex("LearnId")
+                        .IsUnique();
 
                     b.ToTable("Tests");
                 });
@@ -589,13 +589,7 @@ namespace EduSpaceEngine.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EduSpaceEngine.Model.Learn.Test.TestModel", "Test")
-                        .WithOne("Learn")
-                        .HasForeignKey("EduSpaceEngine.Model.Learn.Test.LearnModel", "TestId");
-
                     b.Navigation("Lesson");
-
-                    b.Navigation("Test");
                 });
 
             modelBuilder.Entity("EduSpaceEngine.Model.Learn.Test.TestAnswerModel", b =>
@@ -607,6 +601,17 @@ namespace EduSpaceEngine.Migrations
                         .IsRequired();
 
                     b.Navigation("Test");
+                });
+
+            modelBuilder.Entity("EduSpaceEngine.Model.Learn.Test.TestModel", b =>
+                {
+                    b.HasOne("EduSpaceEngine.Model.Learn.Test.LearnModel", "Learn")
+                        .WithOne("Test")
+                        .HasForeignKey("EduSpaceEngine.Model.Learn.Test.TestModel", "LearnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Learn");
                 });
 
             modelBuilder.Entity("EduSpaceEngine.Model.Learn.Test.VideoModel", b =>
@@ -679,6 +684,8 @@ namespace EduSpaceEngine.Migrations
 
             modelBuilder.Entity("EduSpaceEngine.Model.Learn.Test.LearnModel", b =>
                 {
+                    b.Navigation("Test");
+
                     b.Navigation("Video")
                         .IsRequired();
                 });
@@ -686,8 +693,6 @@ namespace EduSpaceEngine.Migrations
             modelBuilder.Entity("EduSpaceEngine.Model.Learn.Test.TestModel", b =>
                 {
                     b.Navigation("Answers");
-
-                    b.Navigation("Learn");
                 });
 
             modelBuilder.Entity("EduSpaceEngine.Model.Social.PostModel", b =>

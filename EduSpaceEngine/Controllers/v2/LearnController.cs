@@ -1,6 +1,7 @@
 ﻿using Asp.Versioning;
 using EduSpaceEngine.Data;
 using EduSpaceEngine.Model.Learn;
+using EduSpaceEngine.Model.Learn.FullCourseReq;
 using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.AspNetCore.Authorization;
@@ -135,18 +136,25 @@ namespace EduSpaceEngine.Controllers.v2
                 return BadRequest(ModelState);
             }
 
-            var level = await _context.Levels.FirstOrDefaultAsync(u => u.LevelId == levelid);
-
-            if (level == null)
+            try
             {
-                return NotFound("Level Not Found");
+                var level = await _context.Levels.FindAsync(levelid);
+
+                if (level == null)
+                {
+                    return NotFound("Level Not Found");
+                }
+
+                _context.Levels.Remove(level);
+                await _context.SaveChangesAsync();
+
+                return Ok("Level and associated entities removed");
             }
-
-            _context.Levels.Remove(level);
-
-            await _context.SaveChangesAsync();
-
-            return Ok("Removed");
+            catch (Exception ex)
+            {
+                // Log the exception or handle it in a way that makes sense for your application
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting level: {ex.Message}");
+            }
         }
 
         // ---------- Courses ----------
@@ -179,12 +187,12 @@ namespace EduSpaceEngine.Controllers.v2
 
                 var courseResponse = new
                 {
-                    course.CourseId,
+                    CourseId = course.CourseId,
                     CourseName = courseName,
                     Description = description,
-                    course.CourseLogo,
-                    course.FormattedCourseName,
-                    course.LevelId
+                    CourseLogo = course.CourseLogo,
+                    FormattedCourseName = course.FormattedCourseName,
+                    LevelId = course.LevelId
                 };
 
                 coursesResponse.Add(courseResponse);
@@ -237,35 +245,35 @@ namespace EduSpaceEngine.Controllers.v2
             string descriptionProperty = lang == "en" ? course.Description_en : course.Description_ka;
 
             // Determine which property to return based on the language for subject name and description
-            Func<SubjectModel, string?> subjectNameSelector = lang == "en" ? (s => s.SubjectName_en) : s => s.SubjectName_ka;
-            Func<SubjectModel, string?> subjectDescriptionSelector = lang == "en" ? (s => s.Description_en) : s => s.Description_ka;
+            Func<SubjectModel, string?> subjectNameSelector = lang == "en" ? (Func<SubjectModel, string?>)(s => s.SubjectName_en) : s => s.SubjectName_ka;
+            Func<SubjectModel, string?> subjectDescriptionSelector = lang == "en" ? (Func<SubjectModel, string?>)(s => s.Description_en) : s => s.Description_ka;
 
             // Determine which property to return based on the language for lesson name
-            Func<LessonModel, string?> lessonNameSelector = lang == "en" ? (l => l.LessonName_en) : l => l.LessonName_ka;
+            Func<LessonModel, string?> lessonNameSelector = lang == "en" ? (Func<LessonModel, string?>)(l => l.LessonName_en) : l => l.LessonName_ka;
 
             // Create a new object with language-specific properties
             var courseDto = new
             {
-                course.CourseId,
+                CourseId = course.CourseId,
                 CourseName = courseNameProperty,
                 Description = descriptionProperty,
-                course.FormattedCourseName,
-                course.CourseLogo,
-                course.Level,
+                FormattedCourseName = course.FormattedCourseName,
+                CourseLogo = course.CourseLogo,
+                Level = course.Level,
                 Subjects = course.Subjects.Select(s => new
                 {
-                    s.SubjectId,
+                    SubjectId = s.SubjectId,
                     SubjectName = subjectNameSelector(s),
                     Description = subjectDescriptionSelector(s),
-                    s.LogoURL,
+                    LogoURL = s.LogoURL,
                     Lessons = s.Lessons.Select(l => new
                     {
-                        l.LessonId,
+                        LessonId = l.LessonId,
                         LessonName = lessonNameSelector(l),
-                        l.LearnMaterial
+                        LearnMaterial = l.LearnMaterial
                     })
                 }),
-                course.Enrollments
+                Enrollments = course.Enrollments
             };
 
             return Ok(courseDto);
@@ -360,18 +368,28 @@ namespace EduSpaceEngine.Controllers.v2
                 return BadRequest(ModelState);
             }
 
-            var course = await _context.Courses.FirstOrDefaultAsync(u => u.CourseId == courseid);
-
-            if (course == null)
+            try
             {
-                return NotFound("level Not been Found");
+                var course = await _context.Courses.Include(c => c.Subjects)
+                                                   .ThenInclude(s => s.Lessons)
+                                                   .ThenInclude(l => l.LearnMaterial)
+                                                   .FirstOrDefaultAsync(c => c.CourseId == courseid);
+
+                if (course == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Courses.Remove(course);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Courses.Remove(course);
-
-            await _context.SaveChangesAsync();
-
-            return Ok("Removed");
+            catch (Exception ex)
+            {
+                // Log the exception or handle it in a way that makes sense for your application
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting course: {ex.Message}");
+            }
         }
 
 
@@ -503,18 +521,25 @@ namespace EduSpaceEngine.Controllers.v2
                 return BadRequest(ModelState);
             }
 
-            var subject = await _context.Subjects.FirstOrDefaultAsync(u => u.SubjectId == subjectid);
-
-            if (subject == null)
+            try
             {
-                return NotFound("Subject Not Found");
+                var subject = await _context.Subjects.FindAsync(subjectid);
+
+                if (subject == null)
+                {
+                    return NotFound("Subject Not Found");
+                }
+
+                _context.Subjects.Remove(subject);
+                await _context.SaveChangesAsync();
+
+                return Ok("Subject and associated entities removed");
             }
-
-            _context.Subjects.Remove(subject);
-
-            await _context.SaveChangesAsync();
-
-            return Ok("Removed");
+            catch (Exception ex)
+            {
+                // Log the exception or handle it in a way that makes sense for your application
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting subject: {ex.Message}");
+            }
         }
 
 
@@ -643,18 +668,25 @@ namespace EduSpaceEngine.Controllers.v2
                 return BadRequest(ModelState);
             }
 
-            var lesson = await _context.Lessons.FirstOrDefaultAsync(u => u.LessonId == lessonid);
-
-            if (lesson == null)
+            try
             {
-                return NotFound("Lesson Not Found");
+                var lesson = await _context.Lessons.FindAsync(lessonid);
+
+                if (lesson == null)
+                {
+                    return NotFound("Lesson Not Found");
+                }
+
+                _context.Lessons.Remove(lesson);
+                await _context.SaveChangesAsync();
+
+                return Ok("Lesson and associated entities removed");
             }
-
-            _context.Lessons.Remove(lesson);
-
-            await _context.SaveChangesAsync();
-
-            return Ok("Removed");
+            catch (Exception ex)
+            {
+                // Log the exception or handle it in a way that makes sense for your application
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting lesson: {ex.Message}");
+            }
         }
 
         // ---------- Tests ----------
@@ -765,17 +797,26 @@ namespace EduSpaceEngine.Controllers.v2
             {
                 return BadRequest(ModelState);
             }
-            var test = await _context.Tests.FindAsync(id);
-
-            if (test == null)
+            try
             {
-                return NotFound();
+                var test = await _context.Tests.Include(t => t.Answers)
+                                               .FirstOrDefaultAsync(t => t.TestId == id);
+
+                if (test == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Tests.Remove(test);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Tests.Remove(test);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                // Log the exception or handle it in a way that makes sense for your application
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting test: {ex.Message}");
+            }
         }
 
         // ---------- Answers ----------
@@ -865,26 +906,30 @@ namespace EduSpaceEngine.Controllers.v2
                 return BadRequest(ModelState);
             }
 
-            var answer = await _context.TestAnswers
-                .FirstOrDefaultAsync(t => t.AnswerId == answerid);
-
-            if (answer == null)
-            {
-                return NotFound();
-            }
-
-            _context.TestAnswers.Remove(answer);
-
             try
             {
+                var answer = await _context.TestAnswers.FindAsync(answerid);
+
+                if (answer == null)
+                {
+                    return NotFound();
+                }
+
+                _context.TestAnswers.Remove(answer);
                 await _context.SaveChangesAsync();
+
                 return Ok("Deleted");
             }
             catch (DbUpdateConcurrencyException ex)
             {
                 // Log the exception or handle it in a way that makes sense for your application
                 // You might inform the user about the concurrency issue and prompt for action
-                return BadRequest(ex.Message);
+                return BadRequest("Concurrency error occurred while deleting the answer.");
+            }
+            catch (Exception ex)
+            {
+                // Log any other unexpected exceptions
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting answer: {ex.Message}");
             }
         }
 
@@ -1029,17 +1074,126 @@ namespace EduSpaceEngine.Controllers.v2
                 return BadRequest(ModelState);
             }
 
-            var learn = await _context.Learn.FindAsync(id);
-
-            if (learn == null)
+            try
             {
-                return NotFound();
+                var learn = await _context.Learn.FindAsync(id);
+
+                if (learn == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Learn.Remove(learn);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                // Log the exception or handle it in a way that makes sense for your application
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting learn material: {ex.Message}");
+            }
+        }
+
+
+
+        [HttpPost("FullCourse")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> CreateCourse([FromBody] FullCourseModel newCourse)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
             }
 
-            _context.Learn.Remove(learn);
+            if (_context.Courses.Any(c => c.FormattedCourseName == newCourse.FormattedCourseName))
+            {
+                return BadRequest("Course Already Exists");
+            }
+
+            var course = new CourseModel
+            {
+                CourseName_ka = newCourse.CourseName_ka,
+                CourseName_en = newCourse.CourseName_en,
+                FormattedCourseName = newCourse.FormattedCourseName,
+                Description_ka = newCourse.Description_ka,
+                Description_en = newCourse.Description_en,
+                CourseLogo = newCourse.CourseLogo,
+                LevelId = newCourse.LevelId,
+                Subjects = new List<SubjectModel>()
+            };
+
+            foreach (var newSubject in newCourse.newSubjectModels)
+            {
+                var subject = new SubjectModel
+                {
+                    SubjectName_ka = newSubject.SubjectName_ka,
+                    SubjectName_en = newSubject.SubjectName_en,
+                    Description_ka = newSubject.Description_ka,
+                    Description_en = newSubject.Description_en,
+                    LogoURL = newSubject.LogoURL,
+                    Lessons = new List<LessonModel>()
+                };
+
+                foreach (var newLesson in newSubject.newLessonModels)
+                {
+                    var lesson = new LessonModel
+                    {
+                        LessonName_ka = newLesson.LessonName_ka,
+                        LessonName_en = newLesson.LessonName_en,
+                        LearnMaterial = new List<LearnModel>()
+                    };
+
+                    foreach (var newLearn in newLesson.newLearnModels)
+                    {
+                        var learn = new LearnModel
+                        {
+                            LearnName = newLearn.LearnName,
+                            Content = newLearn.Content,
+                            Code = newLearn.Code,
+                            LessonId = lesson.LessonId // Set the foreign key relationship
+                        };
+
+                        if (newLearn.newTestModels != null && newLearn.newTestModels.Any())
+                        {
+                            var test = new TestModel
+                            {
+                                Instruction = newLearn.newTestModels.First().Instruction,
+                                Question = newLearn.newTestModels.First().Question,
+                                Code = newLearn.newTestModels.First().Code,
+                                Hint = newLearn.newTestModels.First().Hint,
+                                Answers = new List<TestAnswerModel>(),
+                                LearnId = learn.LearnId // Set the foreign key relationship
+                            };
+
+                            foreach (var newAnswer in newLearn.newTestModels.First().Answers)
+                            {
+                                var answer = new TestAnswerModel
+                                {
+                                    Option = newAnswer.Option,
+                                    IsCorrect = newAnswer.IsCorrect,
+                                    TestId = test.TestId // Set the foreign key relationship
+                                };
+
+                                test.Answers.Add(answer);
+                            }
+
+                            learn.Test = test;
+                        }
+
+                        lesson.LearnMaterial.Add(learn);
+                    }
+
+                    subject.Lessons.Add(lesson);
+                }
+
+                course.Subjects.Add(subject);
+            }
+
+            _context.Courses.Add(course);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(course);
         }
     }
 }

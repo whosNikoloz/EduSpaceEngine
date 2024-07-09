@@ -5,6 +5,7 @@ using EduSpaceEngine.Model.User;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Diagnostics;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace EduSpaceEngine.Data
 {
@@ -46,6 +47,42 @@ namespace EduSpaceEngine.Data
                 .HasOne(learn => learn.Test)        
                 .WithOne(test => test.Learn)       
                 .HasForeignKey<LearnModel>(learn => learn.TestId);
+
+            modelBuilder.Entity<LevelModel>()
+                .HasMany(l => l.Courses)
+                .WithOne(c => c.Level)
+                .HasForeignKey(c => c.LevelId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete from Level to Course
+
+            modelBuilder.Entity<CourseModel>()
+                .HasMany(c => c.Subjects)
+                .WithOne(s => s.Course)
+                .HasForeignKey(s => s.CourseId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete from Course to Subject
+
+            modelBuilder.Entity<SubjectModel>()
+                .HasMany(s => s.Lessons)
+                .WithOne(l => l.Subject)
+                .HasForeignKey(l => l.SubjectId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete from Subject to Lesson
+
+            modelBuilder.Entity<LessonModel>()
+                .HasMany(l => l.LearnMaterial)
+                .WithOne(learn => learn.Lesson)
+                .HasForeignKey(learn => learn.LessonId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete from Lesson to Learn
+
+            modelBuilder.Entity<LearnModel>()
+                .HasOne(l => l.Test)
+                .WithOne(test => test.Learn)
+                .HasForeignKey<TestModel>(test => test.LearnId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete from Lesson to Test
+
+            modelBuilder.Entity<TestModel>()
+                .HasMany(test => test.Answers)
+                .WithOne(answer => answer.Test)
+                .HasForeignKey(answer => answer.TestId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
 
