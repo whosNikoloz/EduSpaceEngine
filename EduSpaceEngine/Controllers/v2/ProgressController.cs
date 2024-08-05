@@ -28,6 +28,53 @@ namespace EduSpaceEngine.Controllers.v2
             _context = context;
         }
 
+        [HttpGet("GetAllProgress"), Authorize]
+        public async Task<IActionResult> GetAllProgress()
+        {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; // JWT id check
+            var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; // JWT Role
+
+            if (JWTRole != "admin")
+            {
+                return BadRequest("Unauthorized");
+            }
+
+            var progress = await _context.Progress.ToListAsync();
+
+            return Ok(progress);
+        }
+
+        [HttpDelete("DeleteProgressBaseCourse"), Authorize]
+        public async Task<IActionResult> DeleteProgress(string formatedCourseName)
+        {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; // JWT id check
+            var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; // JWT Role
+
+            if (JWTRole != "admin")
+            {
+                return BadRequest("Unauthorized");
+            }
+
+            var course = await _context.Courses.FirstOrDefaultAsync(c => c.FormattedCourseName == formatedCourseName);
+
+            if (course == null)
+            {
+                return BadRequest("Course not found.");
+            }
+
+            var progress = await _context.Progress.Where(p => p.CourseId == course.CourseId).ToListAsync();
+
+            if (progress == null)
+            {
+                return BadRequest("Progress not found.");
+            }
+
+            _context.Progress.RemoveRange(progress);
+            await _context.SaveChangesAsync();
+
+            return Ok("Progress deleted.");
+        }
+
         [HttpGet("GetProgress"), Authorize]
         public async Task<IActionResult> GetProgress([FromQuery] ProgressRequest request)
         {

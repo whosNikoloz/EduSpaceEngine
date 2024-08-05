@@ -18,7 +18,7 @@ namespace EduSpaceEngine.Model.Learn.Test
         public string? Code { get; set; }
 
         public int VideoId { get; set; }
-        public virtual VideoModel Video { get; set; } = null!;
+        public virtual VideoModel Video { get; set; }
 
         public int? TestId { get; set; }
 

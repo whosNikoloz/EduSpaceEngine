@@ -3,8 +3,8 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER app
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 80
+EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -23,7 +23,5 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-RUN mkdir -p /app/certificates
-COPY EduSpaceEngine/certificates/aspnetapp.pfx /app/certificates
 
 ENTRYPOINT ["dotnet", "EduSpaceEngine.dll"]
