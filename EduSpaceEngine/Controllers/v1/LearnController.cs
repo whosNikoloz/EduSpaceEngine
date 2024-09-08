@@ -14,7 +14,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using static System.Net.Mime.MediaTypeNames;
 
-namespace EduSpaceEngine.Controllers
+namespace EduSpaceEngine.Controllers.V1
 {
     [ApiController]
     [ApiVersion("1.0")]
@@ -39,7 +39,6 @@ namespace EduSpaceEngine.Controllers
         public async Task<ActionResult<IEnumerable<LevelModel>>> Levels()
         {
             var levels = await _context.Levels
-                .Include(u => u.Courses)
                 .ToListAsync();
 
             return Ok(levels);
@@ -74,7 +73,11 @@ namespace EduSpaceEngine.Controllers
 
             if (_context.Levels.Any(u => u.LevelName_ka == newLevel.LevelName_ka))
             {
-                return BadRequest("Level Already Exists");
+                return NotFound(new
+                {
+                    successful = false,
+                    error = "Level Already Exists"
+                });
             }
 
             var level = new LevelModel
@@ -90,7 +93,12 @@ namespace EduSpaceEngine.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(level);
+            return Ok(new
+            {
+                successful = true,
+                level = level,
+            });
+
         }
 
         /// <summary>
@@ -111,9 +119,14 @@ namespace EduSpaceEngine.Controllers
 
             if (level == null)
             {
-                return NotFound("Level Not Found");
+                return NotFound(new
+                {
+                    successful = true,
+                    error = "Level Already Exists",
+                });
             }
 
+            level.LevelName_en = newLevel.LevelName_en;
             level.LevelName_ka = newLevel.LevelName_ka;
             level.LogoURL = newLevel.LogoURL;
             level.Description_ka = newLevel.Description_ka;
@@ -121,7 +134,11 @@ namespace EduSpaceEngine.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(level);
+            return Ok(new
+            {
+                successful = true,
+                level = level,
+            });
         }
 
         /// <summary>
@@ -139,7 +156,8 @@ namespace EduSpaceEngine.Controllers
 
             try
             {
-                var level = await _context.Levels.FindAsync(levelid);
+                var level = await _context.Levels
+                    .SingleOrDefaultAsync(l => l.LevelId == levelid);
 
                 if (level == null)
                 {
@@ -147,13 +165,13 @@ namespace EduSpaceEngine.Controllers
                 }
 
                 _context.Levels.Remove(level);
+
                 await _context.SaveChangesAsync();
 
-                return Ok("Level and associated entities removed");
+                return Ok("Level and all associated entities removed");
             }
             catch (Exception ex)
             {
-                // Log the exception or handle it in a way that makes sense for your application
                 return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting level: {ex.Message}");
             }
         }

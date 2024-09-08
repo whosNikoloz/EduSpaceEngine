@@ -83,6 +83,37 @@ namespace EduSpaceEngine.Data
                 .WithOne(answer => answer.Test)
                 .HasForeignKey(answer => answer.TestId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+             modelBuilder.Entity<LevelModel>()
+                .HasMany(l => l.Courses)
+                .WithOne(c => c.Level)
+                .HasForeignKey(c => c.LevelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<CourseModel>()
+                    .HasMany(c => c.Subjects)
+                    .WithOne(s => s.Course)
+                    .HasForeignKey(s => s.CourseId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<SubjectModel>()
+                    .HasMany(s => s.Lessons)
+                    .WithOne(l => l.Subject)
+                    .HasForeignKey(l => l.SubjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<LessonModel>()
+                    .HasMany(l => l.LearnMaterial)
+                    .WithOne(lm => lm.Lesson)
+                    .HasForeignKey(lm => lm.LessonId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+
+                modelBuilder.Entity<TestModel>()
+                    .HasMany(t => t.Answers)
+                    .WithOne(a => a.Test)
+                    .HasForeignKey(a => a.TestId)
+                    .OnDelete(DeleteBehavior.Cascade);
         }
 
 
