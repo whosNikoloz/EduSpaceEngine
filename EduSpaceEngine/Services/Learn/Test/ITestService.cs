@@ -5,7 +5,7 @@ namespace EduSpaceEngine.Services.Learn.Test
 {
     public interface ITestService
     {
-        Task<IActionResult> CreateTestlAsync(TestDto testDto);
+        Task<IActionResult> CreateTestlAsync(TestDto testDto, int LearnId);
 
         Task<IActionResult> GetTestByIdAsync(int testId);
 

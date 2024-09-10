@@ -8,6 +8,10 @@ using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.EntityFrameworkCore;
 using EduSpaceEngine.Data;
+using EduSpaceEngine.Services.Learn.Test;
+using EduSpaceEngine.Dto;
+using GreenDonut;
+using Azure;
 
 
 namespace EduSpaceEngine.Controllers.v1.Learn
@@ -17,13 +21,10 @@ namespace EduSpaceEngine.Controllers.v1.Learn
     [Route("api/v{version:apiVersion}/")]
     public class TestController : ControllerBase
     {
-        private readonly DataDbContext _context;
-        private readonly IConfiguration _configuration;
-
-        public TestController(DataDbContext context, IConfiguration configuration)
+        private readonly ITestService _testService;
+        public TestController(ITestService testService)
         {
-            _configuration = configuration;
-            _context = context;
+            _testService = testService;
         }
 
         /// <summary>
@@ -32,7 +33,36 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         [HttpGet("Tests")]
         public async Task<ActionResult<IEnumerable<TestModel>>> GetTests()
         {
-            return await _context.Tests.Include(t => t.Answers).ToListAsync();
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var response = await _testService.GetAllTestAsync();
+
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
+
         }
 
         /// <summary>
@@ -46,15 +76,33 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             {
                 return BadRequest(ModelState);
             }
+            var response = await _testService.GetTestByIdAsync(id);
 
-            var test = await _context.Tests.Include(t => t.Answers).FirstOrDefaultAsync(t => t.TestId == id);
+            var res = new ResponseModel();
 
-            if (test == null)
+            switch (response)
             {
-                return NotFound();
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
 
-            return test;
+
         }
 
         /// <summary>
@@ -69,36 +117,30 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            var learn = await _context.Learn.FirstOrDefaultAsync(u => u.LearnId == LearnId);
+            var response = await _testService.CreateTestlAsync(test, LearnId);
+            var res = new ResponseModel();
 
-            if (learn == null)
+            switch (response)
             {
-                return NotFound("Learn not found");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            var testModel = new TestModel
-            {
-                Instruction_en = test.Instruction_en,
-                Instruction_ka = test.Instruction_ka,
-                Code = test.Code,
-                Question_en = test.Question_en,
-                Question_ka = test.Question_ka,
-                Hint_en = test.Hint_en,
-                Hint_ka = test.Hint_ka,
-                LearnId = learn.LearnId,
-            };
-
-            _context.Tests.Add(testModel);
-            await _context.SaveChangesAsync();
-
-            // Set the Learn's TestId to the newly created test's ID
-            learn.TestId = testModel.TestId;
-
-            // Update the Learn entity with the TestId change
-            _context.Learn.Update(learn);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetTest", new { id = testModel.TestId }, testModel);
         }
 
         /// <summary>
@@ -107,21 +149,37 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// <param name="id">რედაქტირებადი ტესტის უნიკალური იდენტიფიკატორი.</param>
         /// <param name="test">ტესტის განახლებული ინფორმაცია.</param>
         [HttpPut("Tests/{id}"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> PutTest(int id, TestModel test)
+        public async Task<IActionResult> PutTest(int id, TestDto test)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            if (id != test.TestId)
+
+            var response = await _testService.UpdateTestAsync(id, test);
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                return BadRequest();
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            _context.Entry(test).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
 
         /// <summary>
@@ -135,30 +193,29 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             {
                 return BadRequest(ModelState);
             }
-            try
+            var response = await _testService.DeleteTestAsync(id);
+            var res = new ResponseModel();
+            switch (response)
             {
-                var test = await _context.Tests.Include(t => t.Answers)
-                                               .FirstOrDefaultAsync(t => t.TestId == id);
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                if (test == null)
-                {
-                    return NotFound();
-                }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-                _context.Tests.Remove(test);
-                await _context.SaveChangesAsync();
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                // Log the exception or handle it in a way that makes sense for your application
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting test: {ex.Message}");
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
         }
-
-
-
-
     }
 }
