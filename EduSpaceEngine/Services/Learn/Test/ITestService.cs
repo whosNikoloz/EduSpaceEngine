@@ -14,5 +14,7 @@ namespace EduSpaceEngine.Services.Learn.Test
         Task<IActionResult> UpdateTestAsync(int testId, TestDto testDto);
 
         Task<IActionResult> DeleteTestAsync(int testId);
+
+        Task<IActionResult> GetTestsByLearnIdAsync(int learnId);
     }
 }

@@ -62,8 +62,6 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             return Ok(lessons);
         }
 
-
-
         /// <summary>
         /// ამოიღებს კონკრეტულ სასწავლო მასალას მისი უნიკალური იდენტიფიკატორით.
         /// </summary>

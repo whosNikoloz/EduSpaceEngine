@@ -1,9 +1,9 @@
 ﻿using EduSpaceEngine.Model.Learn;
 using System.ComponentModel.DataAnnotations;
 
-namespace EduSpaceEngine.Dto.Learn
+namespace EduSpaceEngine.Dto.Learn.DetailedDto.Learn
 {
-    public class CourseDto
+    public class CourseDetailedDto
     {
         [Required]
         public string? CourseName_ka { get; set; }
@@ -15,5 +15,7 @@ namespace EduSpaceEngine.Dto.Learn
         public string? Description_en { get; set; }
 
         public string? CourseLogo { get; set; }
+        public virtual ICollection<SubjectModel>? Subjects { get; set; } = new List<SubjectModel>();
+
     }
 }

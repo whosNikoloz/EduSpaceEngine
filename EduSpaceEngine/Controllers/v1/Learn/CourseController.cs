@@ -60,6 +60,41 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
+        [HttpGet("CoursesByLevel/{levelId}")]
+        public async Task<IActionResult> CoursesByLevel(int levelId)
+        {
+            var response = await _courseService.GetCoursesByLevelAsync(levelId);
+
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
+        }
+
 
 
         [HttpGet("Courses/CourseName/{notFormattedCourseName}")]

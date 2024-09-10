@@ -20,6 +20,16 @@ namespace EduSpaceEngine.Services.Learn.Test
             _db = db;
         }
 
+        public async Task<IActionResult> GetAnswersByTestIdAsync(int testId)
+        {
+            var answers = await _db.TestAnswers.Where(t => t.TestId == testId).ToListAsync();
+            if (answers == null)
+            {
+                return new NotFoundObjectResult("Answers not found");
+            }
+            return new OkObjectResult(answers);
+        }
+
         public async Task<IActionResult> CreateAnswerAsync(TestAnswerDto answerDto, int TestId)
         {
             var test = await _db.Tests.FirstOrDefaultAsync(u => u.TestId == TestId);

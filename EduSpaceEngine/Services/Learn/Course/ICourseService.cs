@@ -18,6 +18,7 @@ namespace EduSpaceEngine.Services.Learn.Course
 
         Task<IActionResult> UpdateCourseAsync(int courseId, CourseDto courseDto);
 
+        Task<IActionResult> GetCoursesByLevelAsync(int levelId);
         Task<IActionResult> DeleteCourseAsync(int courseId);
     }
 }

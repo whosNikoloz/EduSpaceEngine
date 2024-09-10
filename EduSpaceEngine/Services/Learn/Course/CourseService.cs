@@ -22,6 +22,20 @@ namespace EduSpaceEngine.Services.Learn.Course
 
         }
 
+        public async Task<IActionResult> GetCoursesByLevelAsync(int LevelId)
+        {
+            var courses = await _db.Courses
+                .Include(u => u.Level)
+                .Where(u => u.LevelId == LevelId)
+                .ToListAsync();
+            if(courses == null)
+            {
+                return new NotFoundObjectResult("Courses Not Found");
+            }
+            return new OkObjectResult(courses);
+
+        }
+
         public async Task<IActionResult> CreateCourseAsync(CourseDto courseDto)
         {
             if (_db.Courses.Any(u => u.CourseName_ka == courseDto.CourseName_ka))

@@ -80,7 +80,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         }
 
         [HttpPost("Level")]
-        [Authorize(Roles = "admin")]
+       // [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateLevel(LevelDto newLevel)
         {
             var response = await _levelService.CreateLevelAsync(newLevel);

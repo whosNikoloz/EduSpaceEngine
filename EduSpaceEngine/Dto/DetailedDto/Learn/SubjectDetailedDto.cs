@@ -1,8 +1,8 @@
 ﻿using EduSpaceEngine.Model.Learn;
 
-namespace EduSpaceEngine.Dto.Learn
+namespace EduSpaceEngine.Dto.Learn.DetailedDto.Learn
 {
-    public class SubjectDto
+    public class SubjectDetailedDto
     {
 
         public string? SubjectName_ka { get; set; }
@@ -12,6 +12,8 @@ namespace EduSpaceEngine.Dto.Learn
         public string? Description_en { get; set; }
 
         public string? LogoURL { get; set; }
+
+        public virtual ICollection<LessonModel>? Lessons { get; set; } = new List<LessonModel>();
 
     }
 }

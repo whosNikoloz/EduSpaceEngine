@@ -89,6 +89,36 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
+        [HttpGet("SubjectByCourse/{CourseId}")]
+        public async Task<IActionResult> SubjectByCourse(int CourseId)
+        {
+            var response = await _subjectService.GetSubjectsByCourseIdAsync(CourseId);
+
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
+        }
+
         /// <summary>
         /// ამატებს ახალ საგანს.
         /// </summary>

@@ -105,6 +105,39 @@ namespace EduSpaceEngine.Controllers.v1.Learn
 
         }
 
+        [HttpGet("TestsByLearn/{LearnId}")]
+        public async Task<ActionResult<IEnumerable<TestModel>>> GetTestsByLearn(int LearnId)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var response = await _testService.GetTestsByLearnIdAsync(LearnId);
+
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
+        }
         /// <summary>
         /// ამატებს ახალ ტესტს.
         /// </summary>

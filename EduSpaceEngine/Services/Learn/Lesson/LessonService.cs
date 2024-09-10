@@ -18,6 +18,20 @@ namespace EduSpaceEngine.Services.Learn.Lesson
             _db = db;
         }
 
+        public async Task<IActionResult> GetLessonsBySubjectId(int subjectId)
+        {
+            var lessons = await _db.Lessons
+                .Include(u => u.Subject)
+                .Where(u => u.SubjectId == subjectId)
+                .ToListAsync();
+
+            if (lessons == null)
+            {
+                return new NotFoundObjectResult("Lessons not found");
+            }
+            return new OkObjectResult(lessons);
+        }
+
         public async Task<IActionResult> CreateLessonAsync(LessonDto lessonDto, string subjectname_en)
         {
 

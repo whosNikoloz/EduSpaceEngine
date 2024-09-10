@@ -99,6 +99,45 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
+        [HttpGet("LessonBySubject/{subjectid}")]
+        public async Task<IActionResult> LessonBySubject(int subjectid)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var response = await _lessonService.GetLessonsBySubjectId(subjectid);
+
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case ConflictObjectResult conflict:
+                    res.status = false;
+                    res.result = conflict.Value?.ToString();
+                    return Conflict(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
+        }
+
         [HttpPost("Lesson"), Authorize(Roles = "admin")]
         public async Task<IActionResult> AddLesson(LessonDto newlesson, string subjectname_en)
         {

@@ -34,6 +34,16 @@ namespace EduSpaceEngine.Services.Learn.LearnMaterial
             throw new NotImplementedException();
         }
 
+        public async Task<IActionResult> GetLearnMateriasByLessonId(int lessonId)
+        {
+            var learnMaterials = await _db.Learn.Where(lm => lm.LessonId == lessonId).ToListAsync();
+            if (learnMaterials == null)
+            {
+                return new NotFoundObjectResult("LearnMaterials not found");
+            }
+            return new OkObjectResult(learnMaterials);
+        }
+
         public async Task<IActionResult> DeleteLearnMaterialAsync(int lessonId)
         {
             var learnMaterial = await _db.Learn.FirstOrDefaultAsync(lm => lm.LessonId == lessonId);

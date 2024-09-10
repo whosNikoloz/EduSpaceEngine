@@ -14,5 +14,7 @@ namespace EduSpaceEngine.Services.Learn.LearnMaterial
         Task<IActionResult> UpdateLearnMaterialAsync(int learnMaterialId, LearnMaterialDto learnMaterialDto);
 
         Task<IActionResult> DeleteLearnMaterialAsync(int lessonId);
+
+        Task<IActionResult> GetLearnMateriasByLessonId(int lessonId);
     }
 }

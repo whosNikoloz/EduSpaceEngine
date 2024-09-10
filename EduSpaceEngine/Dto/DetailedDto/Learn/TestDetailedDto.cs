@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EduSpaceEngine.Dto.Learn
 {
-    public class TestDto
+    public class TestDetailedDto
     {
         [Required]
         public string Instruction_en { get; set; }
@@ -21,6 +21,7 @@ namespace EduSpaceEngine.Dto.Learn
         public string Hint_en { get; set; }
         public string Hint_ka { get; set; }
 
+        public virtual ICollection<TestAnswerModel>? Answers { get; set; }
 
     }
 }

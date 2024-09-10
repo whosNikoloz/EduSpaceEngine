@@ -14,5 +14,7 @@ namespace EduSpaceEngine.Services.Learn.Subject
         Task<IActionResult> UpdateSubjectAsync(int subjectId, SubjectDto subjectDto);
 
         Task<IActionResult> DeleteSubjectAsync(int subjectId);
+
+        Task<IActionResult> GetSubjectsByCourseIdAsync(int courseId);
     }
 }
