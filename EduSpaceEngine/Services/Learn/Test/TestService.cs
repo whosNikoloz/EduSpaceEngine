@@ -1,5 +1,6 @@
 ﻿using EduSpaceEngine.Data;
 using EduSpaceEngine.Dto.Learn;
+using Microsoft.AspNetCore.Mvc;
 
 namespace EduSpaceEngine.Services.Learn.Test
 {
@@ -11,27 +12,28 @@ namespace EduSpaceEngine.Services.Learn.Test
         {
             _db = db;
         }
-        public Task<TestDto> CreateTestlAsync(TestDto testDto)
+
+        public Task<IActionResult> CreateTestlAsync(TestDto testDto)
         {
             throw new NotImplementedException();
         }
 
-        public Task<bool> DeleteTestAsync(int testId)
+        public Task<IActionResult> DeleteTestAsync(int testId)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<TestDto>> GetAllTestAsync()
+        public Task<IActionResult> GetAllTestAsync()
         {
             throw new NotImplementedException();
         }
 
-        public Task<TestDto> GetTestByIdAsync(int testId)
+        public Task<IActionResult> GetTestByIdAsync(int testId)
         {
             throw new NotImplementedException();
         }
 
-        public Task<TestDto> UpdateTestAsync(int testId, TestDto testDto)
+        public Task<IActionResult> UpdateTestAsync(int testId, TestDto testDto)
         {
             throw new NotImplementedException();
         }

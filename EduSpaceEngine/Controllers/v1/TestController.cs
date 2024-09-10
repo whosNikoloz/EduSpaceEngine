@@ -7,6 +7,7 @@ using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.EntityFrameworkCore;
+using EduSpaceEngine.Data;
 
 
 namespace EduSpaceEngine.Controllers
@@ -16,11 +17,13 @@ namespace EduSpaceEngine.Controllers
     [Route("api/v{version:apiVersion}/")]
     public class TestController : ControllerBase
     {
-        private readonly ILevelService _levelService;
+        private readonly DataDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public TestController(ILevelService levelService)
+        public TestController(DataDbContext context, IConfiguration configuration)
         {
-            _levelService = levelService;   
+            _configuration = configuration;
+            _context = context;
         }
 
         /// <summary>
@@ -59,7 +62,7 @@ namespace EduSpaceEngine.Controllers
         /// </summary>
         /// <param name="test">დამატებული ახალი ტესტის ინფორმაცია.</param>
         [HttpPost("Tests/{LearnId}"), Authorize(Roles = "admin")]
-        public async Task<ActionResult<TestModel>> PostTest(NewTestModel test, int LearnId)
+        public async Task<ActionResult<TestModel>> PostTest(TestDto test, int LearnId)
         {
             if (!ModelState.IsValid)
             {
@@ -75,10 +78,13 @@ namespace EduSpaceEngine.Controllers
 
             var testModel = new TestModel
             {
-                Instruction = test.Instruction,
+                Instruction_en = test.Instruction_en,
+                Instruction_ka = test.Instruction_ka,
                 Code = test.Code,
-                Question = test.Question,
-                Hint = test.Hint,
+                Question_en = test.Question_en,
+                Question_ka = test.Question_ka,
+                Hint_en = test.Hint_en,
+                Hint_ka = test.Hint_ka,
                 LearnId = learn.LearnId,
             };
 

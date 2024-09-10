@@ -7,6 +7,7 @@ using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.EntityFrameworkCore;
+using EduSpaceEngine.Data;
 
 
 namespace EduSpaceEngine.Controllers
@@ -16,11 +17,13 @@ namespace EduSpaceEngine.Controllers
     [Route("api/v{version:apiVersion}/")]
     public class LearnMateriaController : ControllerBase
     {
-        private readonly ILevelService _levelService;
+        private readonly DataDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public LearnMateriaController(ILevelService levelService)
+        public LearnMateriaController(DataDbContext context, IConfiguration configuration)
         {
-            _levelService = levelService;   
+            _configuration = configuration;
+            _context = context;
         }
 
         /// <summary>
@@ -93,7 +96,7 @@ namespace EduSpaceEngine.Controllers
         /// <param name="subjectname">საგნის სახელწოდება, რომელსაც მიეკუთვნება სასწავლო მასალა.</param>
         /// <param name="coursename">კურსის სახელწოდება, რომელსაც მიეკუთვნება სასწავლო მასალა.</param>
         [HttpPost("LearnMaterial"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> PostLearn(NewLearnModel learn, int LessonId)
+        public async Task<IActionResult> PostLearn(LearnMaterialDto learn, int LessonId)
         {
             if (!ModelState.IsValid)
             {
@@ -107,15 +110,17 @@ namespace EduSpaceEngine.Controllers
                 return NotFound();
             }
 
-            if (_context.Learn.Any(u => u.LearnName == learn.LearnName))
+            if (_context.Learn.Any(u => u.LearnName_ka == learn.LearnName_ka))
             {
                 return BadRequest("LearnMaterial Already Exists");
             }
 
             var Learn = new LearnModel
             {
-                LearnName = learn.LearnName,
-                Content = learn.Content,
+                LearnName_ka = learn.LearnName_ka,
+                LearnName_en = learn.LearnName_en,
+                Content_en = learn.Content_en,
+                Content_ka = learn.Content_ka,
                 Code = learn.Code,
                 LessonId = lesson.LessonId,
             };

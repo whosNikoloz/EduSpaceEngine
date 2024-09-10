@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Request;
+using EduSpaceEngine.Data;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace EduSpaceEngine.Controllers
@@ -14,11 +16,13 @@ namespace EduSpaceEngine.Controllers
     [Route("api/v{version:apiVersion}/")]
     public class LessonController : ControllerBase
     {
-        private readonly ILevelService _levelService;
+        private readonly DataDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public LessonController(ILevelService levelService)
+        public LessonController(DataDbContext context, IConfiguration configuration)
         {
-            _levelService = levelService;   
+            _configuration = configuration;
+            _context = context;
         }
 
         [HttpGet("Lessons")]

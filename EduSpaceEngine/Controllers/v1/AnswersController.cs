@@ -7,6 +7,7 @@ using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.EntityFrameworkCore;
+using EduSpaceEngine.Data;
 
 
 namespace EduSpaceEngine.Controllers
@@ -16,11 +17,13 @@ namespace EduSpaceEngine.Controllers
     [Route("api/v{version:apiVersion}/")]
     public class AnswersController : ControllerBase
     {
-        private readonly ILevelService _levelService;
+        private readonly DataDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public AnswersController(ILevelService levelService)
+        public AnswersController(DataDbContext context, IConfiguration configuration)
         {
-            _levelService = levelService;   
+            _configuration = configuration;
+            _context = context;
         }
 
         /// <summary>
@@ -43,8 +46,9 @@ namespace EduSpaceEngine.Controllers
             {
                 return NotFound();
             }
+            return null;
 
-            return CreatedAtAction(nameof(GetTest), new { id = test.TestId }, test);
+            //return CreatedAtAction(nameof(GetTest), new { id = test.TestId }, test);
         }
 
         /// <summary>
@@ -53,7 +57,7 @@ namespace EduSpaceEngine.Controllers
         /// <param name="testId">The unique identifier of the test.</param>
         /// <param name="answer">The information of the added answer.</param>
         [HttpPost("{testId}/answers"), Authorize(Roles = "admin")]
-        public async Task<ActionResult<TestModel>> AddAnswerToTest(int testId, NewTestAnswerModel answer)
+        public async Task<ActionResult<TestModel>> AddAnswerToTest(int testId, TestAnswerDto answer)
         {
             if (!ModelState.IsValid)
             {
@@ -76,7 +80,8 @@ namespace EduSpaceEngine.Controllers
 
             var Answer = new TestAnswerModel
             {
-                Option = answer.Option,
+                Option_en = answer.Option_en,
+                Option_ka = answer.Option_ka,
                 IsCorrect = answer.IsCorrect,
                 TestId = testId,
             };
@@ -92,8 +97,9 @@ namespace EduSpaceEngine.Controllers
                 // Log the exception or handle it in a way that makes sense for your application
                 // You might inform the user about the concurrency issue and prompt for action
             }
+            return null;
 
-            return CreatedAtAction(nameof(GetTest), new { id = test.TestId }, test);
+ //           return CreatedAtAction(nameof(GetTest), new { id = test.TestId }, test);
         }
 
         /// <summary>
