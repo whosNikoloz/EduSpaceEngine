@@ -512,6 +512,11 @@ namespace EduSpaceEngine.Controllers
                     res.result = badReq.Value?.ToString();
                     return BadRequest(res);
 
+                case ConflictObjectResult conflict:
+                    res.status = false;
+                    res.result = conflict.Value?.ToString();
+                    return Conflict(res);
+
                 case UnauthorizedObjectResult unResult:
                     res.status = false;
                     res.result = unResult.Value?.ToString();
@@ -810,7 +815,10 @@ namespace EduSpaceEngine.Controllers
                     res.status = false;
                     res.result = badReq.Value?.ToString();
                     return BadRequest(res);
-
+                case ConflictObjectResult conflictObjectResult:
+                    res.status = false;
+                    res.result = conflictObjectResult.Value?.ToString();
+                    return Conflict(res);
                 case UnauthorizedObjectResult unResult:
                     res.status = false;
                     res.result = unResult.Value?.ToString();
@@ -853,6 +861,11 @@ namespace EduSpaceEngine.Controllers
                     res.status = false;
                     res.result = badReq.Value?.ToString();
                     return BadRequest(res);
+
+                case ConflictObjectResult conflictObjectResult:
+                    res.status = false;
+                    res.result = conflictObjectResult.Value?.ToString();
+                    return Conflict(res);
 
                 case UnauthorizedObjectResult unResult:
                     res.status = false;

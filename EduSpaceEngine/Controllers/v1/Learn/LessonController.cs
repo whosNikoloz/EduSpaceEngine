@@ -7,6 +7,9 @@ using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Data;
 using Microsoft.EntityFrameworkCore;
+using EduSpaceEngine.Services.Learn.Lesson;
+using EduSpaceEngine.Dto;
+using GreenDonut;
 
 
 namespace EduSpaceEngine.Controllers.v1.Learn
@@ -16,124 +19,165 @@ namespace EduSpaceEngine.Controllers.v1.Learn
     [Route("api/v{version:apiVersion}/")]
     public class LessonController : ControllerBase
     {
-        private readonly DataDbContext _context;
-        private readonly IConfiguration _configuration;
-
-        public LessonController(DataDbContext context, IConfiguration configuration)
+        private readonly ILessonService _lessonService;
+        public LessonController(ILessonService lessonService)
         {
-            _configuration = configuration;
-            _context = context;
+            _lessonService = lessonService;
         }
 
         [HttpGet("Lessons")]
         public async Task<ActionResult<IEnumerable<LessonModel>>> Lessons()
         {
+            var response = await _lessonService.GetAllLessonsAsync();
 
-            var lessons = await _context.Lessons
-                .Include(u => u.Subject)
-                .Include(u => u.LearnMaterial)
-                .ToListAsync();
+            var res = new ResponseModel();
 
-            return Ok(lessons);
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case ConflictObjectResult conflict:
+                    res.status = false;
+                    res.result = conflict.Value?.ToString();
+                    return Conflict(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
-        /// <summary>
-        /// ამოიღებს კონკრეტულ გაკვეთილის მისი უნიკალური იდენტიფიკატორის მიხედვით.
-        /// </summary>
-        /// <param name="lessonid">სუბიექტის უნიკალური იდენტიფიკატორი.</param>
         [HttpGet("Lesson/{lessonid}")]
         public async Task<IActionResult> Lesson(int lessonid)
         {
-            var lesson = await _context.Lessons
-                .Include(u => u.Subject)
-                .Include(u => u.LearnMaterial)
-                 .ThenInclude(t => t.Test)
-                    .ThenInclude(t => t.Answers)
-                .FirstOrDefaultAsync(u => u.LessonId == lessonid);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            var response = await _lessonService.GetLessonByIdAsync(lessonid);
 
-            return Ok(lesson);
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case ConflictObjectResult conflict:
+                    res.status = false;
+                    res.result = conflict.Value?.ToString();
+                    return Conflict(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
-        /// <summary>
-        /// ამატებს ახალ საგანს.
-        /// </summary>
-        /// <param name="newlesson">დამატებული ახალი გაკვეთილის ინფორმაცია.</param>
-        /// <param name="subjectname">თემის სახელწოდება, რომელსაც ეკუთვნის საგანი.</param>
         [HttpPost("Lesson"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> AddLesson(NewLessonModel newlesson, string subjectname_en)
+        public async Task<IActionResult> AddLesson(LessonDto newlesson, string subjectname_en)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+            
+            var response = await _lessonService.CreateLessonAsync(newlesson, subjectname_en);
 
-            var subject = await _context.Subjects.FirstOrDefaultAsync(u => u.SubjectName_en == subjectname_en);
+            var res = new ResponseModel();
 
-            if (subject == null)
+            switch (response)
             {
-                return NotFound("Subject Not Found");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case ConflictObjectResult conflict:
+                    res.status = false;
+                    res.result = conflict.Value?.ToString();
+                    return Conflict(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            if (_context.Lessons.Any(u => u.LessonName_ka == newlesson.LessonName_ka && u.SubjectId == subject.SubjectId))
-            {
-                return BadRequest("Lesson Already Exists");
-            }
-
-            var lesson = new LessonModel
-            {
-                LessonName_ka = newlesson.LessonName_ka,
-                LessonName_en = newlesson.LessonName_en,
-                SubjectId = subject.SubjectId,
-            };
-
-            _context.Lessons.Add(lesson);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-
-            return Ok(lesson);
         }
 
-        /// <summary>
-        /// არედაქტირებს არსებულ საგანს.
-        /// </summary>
-        /// <param name="newlesson">განახლებული ინფორმაცია გაკვეთილისთვის.</param>
-        /// <param name="lessonid">რედაქტირებადი საგნის უნიკალური იდენტიფიკატორი.</param>
         [HttpPut("Lessons/{lessonid}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> EditLesson(NewLessonModel newlesson, int lessonid)
+        public async Task<IActionResult> EditLesson(LessonDto newlesson, int lessonid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+            var response = await _lessonService.UpdateLessonAsync(lessonid, newlesson);
+            var res = new ResponseModel();
 
-            var lesson = await _context.Lessons.FirstOrDefaultAsync(u => u.LessonId == lessonid);
-
-            if (lesson == null)
+            switch (response)
             {
-                return NotFound("Lesson Not Found");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case ConflictObjectResult conflict:
+                    res.status = false;
+                    res.result = conflict.Value?.ToString();
+                    return Conflict(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            lesson.LessonName_ka = newlesson.LessonName_ka;
-            lesson.LessonName_en = newlesson.LessonName_en;
-            lesson.SubjectId = lesson.SubjectId;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(lesson);
         }
 
-        /// <summary>
-        /// შლის კონკრეტულ გაკვეთილს მისი უნიკალური იდენტიფიკატორის მიხედვით.
-        /// </summary>
-        /// <param name="lessonid">წაშლილი საგნის უნიკალური იდენტიფიკატორი.</param>
         [HttpDelete("Lessons/{lesson}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteLesson(int lessonid)
@@ -143,25 +187,36 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            try
+            var response = await _lessonService.DeleteLessonAsync(lessonid);
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                var lesson = await _context.Lessons.FindAsync(lessonid);
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                if (lesson == null)
-                {
-                    return NotFound("Lesson Not Found");
-                }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-                _context.Lessons.Remove(lesson);
-                await _context.SaveChangesAsync();
+                case ConflictObjectResult conflict:
+                    res.status = false;
+                    res.result = conflict.Value?.ToString();
+                    return Conflict(res);
 
-                return Ok("Lesson and associated entities removed");
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            catch (Exception ex)
-            {
-                // Log the exception or handle it in a way that makes sense for your application
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting lesson: {ex.Message}");
-            }
+
         }
 
     }

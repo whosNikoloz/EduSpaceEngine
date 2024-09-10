@@ -1,6 +1,9 @@
-﻿using EduSpaceEngine.Data;
+﻿using AutoMapper;
+using EduSpaceEngine.Data;
 using EduSpaceEngine.Dto.Learn;
+using EduSpaceEngine.Model.Learn;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EduSpaceEngine.Services.Learn.Lesson
 {
@@ -8,34 +11,93 @@ namespace EduSpaceEngine.Services.Learn.Lesson
     {
 
         private readonly DataDbContext _db;
-        public LessonService(DataDbContext db)
+        private readonly IMapper _mapper;
+        public LessonService(DataDbContext db, IMapper mapper)
         {
+            _mapper = mapper;
             _db = db;
         }
 
-        public Task<IActionResult> CreateLessonAsync(LessonDto lessonDto)
+        public async Task<IActionResult> CreateLessonAsync(LessonDto lessonDto, string subjectname_en)
         {
-            throw new NotImplementedException();
+
+            var subject = await _db.Subjects.FirstOrDefaultAsync(u => u.SubjectName_en == subjectname_en);
+
+            if (subject == null)
+            {
+                return new NotFoundObjectResult("Subject Not Found");
+            }
+
+            if (_db.Lessons.Any(u => u.LessonName_ka == lessonDto.LessonName_ka && u.SubjectId == subject.SubjectId))
+            {
+                return new ConflictObjectResult("Lesson Already Exists");
+            }
+
+            try
+            {
+                LessonModel newLesson = _mapper.Map<LessonModel>(lessonDto);
+                _db.Lessons.Add(newLesson);
+                return new OkObjectResult(newLesson);
+            }
+            catch (Exception e)
+            {
+                return new BadRequestObjectResult(e.Message);
+            }
         }
 
         public Task<IActionResult> DeleteLessonAsync(int lessonId)
         {
+
             throw new NotImplementedException();
         }
 
-        public Task<IActionResult> GetAllLessonsAsync()
+        public async Task<IActionResult> GetAllLessonsAsync()
         {
-            throw new NotImplementedException();
+            var lessons = await _db.Lessons
+               .Include(u => u.Subject)
+               .Include(u => u.LearnMaterial)
+               .ToListAsync();
+
+            if(lessons == null)
+            {
+                return new NotFoundObjectResult("Lessons not found");
+            }
+            return new OkObjectResult(lessons);
         }
 
-        public Task<IActionResult> GetLessonByIdAsync(int lessonId)
+        public async Task<IActionResult> GetLessonByIdAsync(int lessonId)
         {
-            throw new NotImplementedException();
+            var lesson = await _db.Lessons
+                .Include(u => u.Subject)
+                .Include(u => u.LearnMaterial)
+                .FirstOrDefaultAsync(u => u.LessonId == lessonId);
+
+            if (lesson == null)
+            {
+                return new NotFoundObjectResult("Lesson not found");
+            }
+            return new OkObjectResult(lesson);
         }
 
-        public Task<IActionResult> UpdateLessonAsync(int lessonId, LessonDto lessonDto)
+        public async Task<IActionResult> UpdateLessonAsync(int lessonId, LessonDto lessonDto)
         {
-            throw new NotImplementedException();
+            var lesson = await _db.Lessons.FirstOrDefaultAsync(u => u.LessonId == lessonId);
+
+            if (lesson == null)
+            {
+                return new NotFoundObjectResult("Lesson not found");
+            }
+            try
+            {
+                lesson = _mapper.Map<LessonModel>(lessonDto);
+                _db.Lessons.Update(lesson);
+                _db.SaveChanges();
+                return new OkObjectResult(lesson);
+            }
+            catch (Exception e)
+            {
+                return new BadRequestObjectResult(e.Message);
+            }
         }
     }
 }
