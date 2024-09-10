@@ -21,7 +21,7 @@ namespace EduSpaceEngine.Controllers.V2
     [Route("api/v{version:apiVersion}/[controller]")]
     public class LearnController : ControllerBase
     {
-        private readonly DataDbContext _context;
+        /*private readonly DataDbContext _context;
         private readonly IConfiguration _configuration;
 
         public LearnController(DataDbContext context, IConfiguration configuration)
@@ -39,6 +39,7 @@ namespace EduSpaceEngine.Controllers.V2
         public async Task<ActionResult<IEnumerable<LevelModel>>> Levels()
         {
             var levels = await _context.Levels
+                .Include(u => u.Courses)
                 .ToListAsync();
 
             return Ok(levels);
@@ -1213,6 +1214,6 @@ namespace EduSpaceEngine.Controllers.V2
             await _context.SaveChangesAsync();
 
             return Ok(course);
-        }
+        }*/
     }
 }

@@ -17,12 +17,15 @@ namespace EduSpaceEngine.Model.Social
         public string? Video { get; set; }
 
         public DateTime CreatedAt { get; set; }
+        public int PostId { get; set; }
 
-        [ForeignKey("PostId")]
+
         [JsonIgnore] // Ignore this property during serialization
         public virtual PostModel? Post { get; set; } // Navigation property to Post
 
-        [ForeignKey("UserId")]
+        public int UserId { get; set; }
+
+
         [JsonIgnore] // Ignore this property during serialization
         public virtual UserModel? User { get; set; }
     }

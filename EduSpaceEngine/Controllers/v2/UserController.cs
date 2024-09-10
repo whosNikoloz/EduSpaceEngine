@@ -19,6 +19,7 @@ using System.Diagnostics.Metrics;
 using System;
 using AutoMapper;
 using Asp.Versioning;
+using EduSpaceEngine.Model;
 
 namespace EduSpaceEngine.Controllers.v2
 {
@@ -50,7 +51,20 @@ namespace EduSpaceEngine.Controllers.v2
         [HttpGet("Users"), Authorize(Roles = "admin")]
         public async Task<IActionResult> GetUsers()
         {
-            return Ok(await _context.Users.ToListAsync());
+            var users = await _context.Users.ToListAsync();
+            if(users == null)
+            {
+                return Ok(new
+                {
+                    status = false,
+                    error = "No Users Found"
+                });
+            }
+            return Ok(new
+            {
+                status = true,
+                result = users
+            });
         }
 
         // მიიღეთ კონკრეტული მომხმარებლის პროფილი მომხმარებლის სახელით.

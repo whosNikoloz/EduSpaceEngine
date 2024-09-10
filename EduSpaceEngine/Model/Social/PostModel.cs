@@ -20,7 +20,8 @@ namespace EduSpaceEngine.Model.Social
 
         public DateTime CreateDate { get; set; }
 
-        [ForeignKey("UserId")]
+        public int UserId { get; set; }
+
         [JsonIgnore] // Ignore this property during serialization
         public virtual UserModel? User { get; set; } // Navigation property to UserModel
 

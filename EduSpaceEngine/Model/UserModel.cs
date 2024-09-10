@@ -2,7 +2,7 @@
 using EduSpaceEngine.Model.Social;
 using System.ComponentModel.DataAnnotations;
 
-namespace EduSpaceEngine.Model.User
+namespace EduSpaceEngine.Model
 {
     public class UserModel
     {
@@ -41,6 +41,8 @@ namespace EduSpaceEngine.Model.User
         // OAuth-specific properties
         public string? OAuthProvider { get; set; } // Store the OAuth provider (e.g., "Google")
         public string? OAuthProviderId { get; set; } // Store the unique identifier provided by the OAuth provider
+
+        public string Plan { get; set; } = "Basic";
 
 
         //Learn

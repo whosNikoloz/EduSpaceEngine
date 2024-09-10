@@ -1,6 +1,10 @@
 using Asp.Versioning;
 using EduSpaceEngine.Data;
+using EduSpaceEngine.GraphQL;
 using EduSpaceEngine.Hubs;
+using EduSpaceEngine.Services.Email;
+using EduSpaceEngine.Services.Static;
+using EduSpaceEngine.Services.User;
 using EduSpaceEngine.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
@@ -10,8 +14,18 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Filters;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using System;
 using System.Globalization;
 using System.Text;
+using HotChocolate.AspNetCore.Playground;
+using HotChocolate.AspNetCore;
+using EduSpaceEngine.Services.Social;
+using EduSpaceEngine.Services.Learn.Course;
+using EduSpaceEngine.Services.Learn.Subject;
+using EduSpaceEngine.Services.Learn.Lesson;
+using EduSpaceEngine.Services.Learn.Level;
+using EduSpaceEngine.Services.Learn.Test;
+using EduSpaceEngine.Services.Learn.LearnMaterial;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -76,6 +90,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 
+
 /*builder.Services.AddDbContext<DataDbContext>(
                        options =>
                        {
@@ -96,6 +111,27 @@ builder.Services.AddDbContext<DataDbContext>(options => options.UseMySql(connect
 
 builder.Services.AddSignalR();
 
+builder.Services.AddScoped<Query>();
+builder.Services.AddScoped<Mutation>();
+builder.Services.AddScoped<DataDbContext>();
+
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IStatiFuncs, StaticFuncs>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ISocialService, SocialService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+
+//Learn
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<ISubjectService, SubjectService>();
+builder.Services.AddScoped<ILessonService, LessonService>();
+builder.Services.AddScoped<ILevelService, LevelService>();
+builder.Services.AddScoped<ITestService, TestService>();
+builder.Services.AddScoped<ILearnMaterialService, LearnMaterialService>();
+
+
 //builder.Services.AddSingleton<NotificationHub>();
 
 builder.Services.AddCors(opt =>
@@ -109,6 +145,12 @@ builder.Services.AddCors(opt =>
     });
 });
 
+
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddMutationType<Mutation>();
+    //.AddAuthorization();
 
 
 var app = builder.Build();
@@ -128,6 +170,12 @@ if (app.Environment.IsDevelopment())
             var name = description.GroupName.ToUpperInvariant();
             options.SwaggerEndpoint(url, name);
         }
+    });
+
+    app.UsePlayground(new PlaygroundOptions
+    {
+        Path = "/playground",
+        QueryPath = "/graphql"
     });
 }
 

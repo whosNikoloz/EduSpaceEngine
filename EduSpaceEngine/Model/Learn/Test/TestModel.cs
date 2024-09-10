@@ -10,14 +10,20 @@ namespace EduSpaceEngine.Model.Learn.Test
         public int TestId { get; set; }
 
         [Required]
-        public string? Instruction { get; set; }
+        public string Instruction_en { get; set; }
+        [Required]
+        public string Instruction_ka { get; set; }
 
         [Required]
-        public string? Question { get; set; }
+        public string Question_en { get; set; }
 
-        public string? Code { get; set; }
+        [Required]
+        public string Question_ka { get; set; }
 
-        public string? Hint { get; set; }
+        public string Code { get; set; }
+
+        public string Hint_en { get; set; }
+        public string Hint_ka { get; set; }
 
         public int LearnId { get; set; }
 

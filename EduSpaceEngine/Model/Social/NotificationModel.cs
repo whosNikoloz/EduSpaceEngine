@@ -19,7 +19,6 @@ namespace EduSpaceEngine.Model.Social
         public string? CommentAuthorPicture { get; set; }
 
         public int UserId { get; set; }
-        
 
         [JsonIgnore]
         public UserModel? User { get; set; }

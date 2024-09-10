@@ -1,16 +1,18 @@
 ﻿using EduSpaceEngine.Model.Social.Request;
 using EduSpaceEngine.Model.Social;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using EduSpaceEngine.Data;
 using Microsoft.EntityFrameworkCore;
-using EduSpaceEngine.Model.Learn.Test;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using EduSpaceEngine.Hubs;
 using System.Collections.Concurrent;
 using Asp.Versioning;
+using EduSpaceEngine.Services.Social;
+using EduSpaceEngine.Dto.Social;
+using Azure;
+using EduSpaceEngine.Dto;
+using GreenDonut;
 
 namespace EduSpaceEngine.Controllers
 {
@@ -19,19 +21,19 @@ namespace EduSpaceEngine.Controllers
     [Route("api/v{version:apiVersion}/[controller]")]
     public class SocialController : ControllerBase
     {
-        private readonly DataDbContext _context;
-        private readonly IConfiguration _configuration;
         private readonly IHubContext<NotificationHub> _NothubContext;
         private readonly IHubContext<CommentHub> _ComhubContext;
-
-        public SocialController(DataDbContext context, IConfiguration configuration, IHubContext<NotificationHub> NothubContext, IHubContext<CommentHub> ComhubContext)
+        private readonly ISocialService _socialService;
+        private readonly ICommentService _commentService;
+        private readonly INotificationService _notificationService;
+        public SocialController(IHubContext<NotificationHub> NothubContext, IHubContext<CommentHub> ComhubContext, ISocialService socialService , ICommentService commentService, INotificationService notificationService)
         {
-            _configuration = configuration;
-            _context = context;
             _NothubContext = NothubContext;
             _ComhubContext = ComhubContext;
+            _socialService = socialService;
+            _commentService = commentService;
+            _notificationService = notificationService;
         }
-
 
         private readonly ConcurrentDictionary<string, string> userConnectionMap = NotificationHub.userConnectionMap;
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> userPostConnectionMap = CommentHub.userPostConnectionMap;
@@ -45,61 +47,32 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("Posts")]
         public async Task<ActionResult<IEnumerable<object>>> GetPosts([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var query = _context.Posts
-                .Include(p => p.User)
-                .Include(p => p.Comments)
-                    .ThenInclude(c => c.User) // Include the user for each comment
-                .OrderByDescending(p => p.CreateDate) // Sort by creation date in descending order
-                .AsQueryable();
+            // Await the result from GetPostsAsync
+            var result = await _socialService.GetPostsAsync(page, pageSize);
 
-            // Calculate the number of items to skip
-            int skip = (page - 1) * pageSize;
+            var res = new ResponseModel();
 
-            // Apply pagination
-            var posts = await query.Skip(skip).Take(pageSize).ToListAsync();
-
-            var responseList = new List<object>();
-
-            foreach (var post in posts)
+            switch (result)
             {
-                var postResponse = new
-                {
-                    postId = post.PostId,
-                    content = post.Content,
-                    video = post.Video,
-                    picture = post.Picture,
-                    subject = post.Subject,
-                    createdAt = post.CreateDate,
-                    user = new
-                    {
-                        userId = post.User.UserId,
-                        firstname = post.User.FirstName,
-                        lastname = post.User.LastName,
-                        username = post.User.UserName,
-                        picture = post.User.Picture,
-                    },
-                    comments = post.Comments.Select(comment => new
-                    {
-                        commentId = comment.CommentId,
-                        commentContent = comment.Content,
-                        commentPicture = comment.Picture,
-                        commentVideo = comment.Video,
-                        commentCreatedAt = comment.CreatedAt,
-                        commentUser = new
-                        {
-                            userId = comment.User.UserId,
-                            firstname = comment.User.FirstName,
-                            lastname = comment.User.LastName,
-                            username = comment.User.UserName,
-                            picture = comment.User.Picture,
-                        }
-                    }).ToList()
-                };
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                responseList.Add(postResponse);
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            return Ok(responseList);
         }
 
 
@@ -108,53 +81,30 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("LastPost")]
         public async Task<ActionResult<object>> GetLastPost()
         {
-            var lastPost = await _context.Posts
-                .Include(p => p.User)
-                .Include(p => p.Comments)
-                    .ThenInclude(c => c.User) // Include the user for each comment
-                .OrderByDescending(p => p.CreateDate)
-                .FirstOrDefaultAsync();
+            var response = await _socialService.GetLastPostAsync();
+            var res = new ResponseModel();
 
-            if (lastPost == null)
+            switch (response)
             {
-                return NotFound(); // No posts found
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            var postResponse = new
-            {
-                postId = lastPost.PostId,
-                content = lastPost.Content,
-                video = lastPost.Video,
-                picture = lastPost.Picture,
-                subject = lastPost.Subject,
-                createdAt = lastPost.CreateDate,
-                user = new
-                {
-                    userId = lastPost.User.UserId,
-                    firstname = lastPost.User.FirstName,
-                    lastname = lastPost.User.LastName,
-                    username = lastPost.User.UserName,
-                    picture = lastPost.User.Picture,
-                },
-                comments = lastPost.Comments.Select(comment => new
-                {
-                    commentId = comment.CommentId,
-                    commentContent = comment.Content,
-                    commentPicture = comment.Picture,
-                    commentVideo = comment.Video,
-                    commentCreatedAt = comment.CreatedAt,
-                    commentUser = new
-                    {
-                        userId = comment.User.UserId,
-                        firstname = comment.User.FirstName,
-                        lastname = comment.User.LastName,
-                        username = comment.User.UserName,
-                        picture = comment.User.Picture,
-                    }
-                }).ToList()
-            };
-
-            return Ok(postResponse);
         }
 
 
@@ -167,7 +117,30 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("Post/{postId}")]
         public async Task<IActionResult> GetPost(int postId)
         {
-            return Ok(await _context.Posts.FirstOrDefaultAsync(u => u.PostId == postId));
+            var response = await _socialService.GetPostAsync(postId);
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
 
         }
 
@@ -178,61 +151,31 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("Posts/{subject}")]
         public async Task<IActionResult> PostsWithSubjeect(string subject, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var query = _context.Posts
-                .Where(u => u.Subject == subject)
-                .Include(p => p.User)
-                .Include(p => p.Comments)
-                    .ThenInclude(c => c.User) // Include the user for each comment
-                .OrderByDescending(p => p.CreateDate) // Sort by creation date in descending order
-                .AsQueryable();
-            int skip = (page - 1) * pageSize;
+            var response = await _socialService.GetPostsWithSubjectAsync(subject, page, pageSize);
 
-            // Apply pagination
-            var posts = await query.Skip(skip).Take(pageSize).ToListAsync();
+            var res = new ResponseModel();
 
-            var responseList = new List<object>();
-
-            foreach (var post in posts)
+            switch (response)
             {
-                var postResponse = new
-                {
-                    postId = post.PostId,
-                    content = post.Content,
-                    video = post.Video,
-                    picture = post.Picture,
-                    subject = post.Subject,
-                    createdAt = post.CreateDate,
-                    user = new
-                    {
-                        userId = post.User.UserId,
-                        firstname = post.User.FirstName,
-                        lastname = post.User.LastName,
-                        username = post.User.UserName,
-                        picture = post.User.Picture,
-                    },
-                    comments = post.Comments.Select(comment => new
-                    {
-                        commentId = comment.CommentId,
-                        commentContent = comment.Content,
-                        commentPicture = comment.Picture,
-                        commentVideo = comment.Video,
-                        commentCreatedAt = comment.CreatedAt,
-                        commentUser = new
-                        {
-                            userId = comment.User.UserId,
-                            firstname = comment.User.FirstName,
-                            lastname = comment.User.LastName,
-                            username = comment.User.UserName,
-                            picture = comment.User.Picture,
-                        }
-                    }).ToList()
-                };
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                responseList.Add(postResponse);
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            return Ok(responseList);
-
         }
 
         /// <summary>
@@ -241,48 +184,44 @@ namespace EduSpaceEngine.Controllers
         /// <param name="Post">პოსტის ინფორმაციის შექმნა.</param>
         /// <param name="Userid">პოსტის შემქმნელი მომხმარებლის ID.</param>
         [HttpPost("Posts/"), Authorize]
-        public async Task<IActionResult> CreatePost(PostRequestModel Post)
+        public async Task<IActionResult> CreatePost(PostDto Post)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
-            if (!ModelState.IsValid)
+            var response = await _socialService.CreatePostAsync(Post, Int32.Parse(userId), JWTRole);
+
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                return BadRequest(ModelState);
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            var user = await _context.Users.Include(u => u.Posts).FirstOrDefaultAsync(u => u.UserId.ToString() == userId);  //მაძლევს Users პოსტებით
-
-            if (user == null)
-            {
-                return BadRequest("User Not Found");
-            }
-            if (userId != user.UserId.ToString())
-            {
-                if(JWTRole != "admin")
-                {
-                    return BadRequest("Authorize invalid");
-                }
-            }
-
-            var NewPost = new PostModel
-            {
-                Subject = Post.Subject,
-                Content = Post.Content,
-                Video = Post.Video,
-                Picture = Post.Picture,
-                CreateDate = DateTime.Now,
-                User = user,
-            };
-
-            user.Posts ??= new List<PostModel>();
-            user.Posts.Add(NewPost);
-
-            _context.Posts.Add(NewPost);
-            await _context.SaveChangesAsync();
 
 
 
-            return Ok(NewPost);
         }
 
         /// <summary>
@@ -290,63 +229,40 @@ namespace EduSpaceEngine.Controllers
         /// </summary>
         /// <param name="EditedPost">რედაქტირებული პოსტის ინფორმაცია.</param>
         [HttpPut("Posts"), Authorize]
-        public async Task<IActionResult> EditPost(EditPostRequestModel EditedPost)
+        public async Task<IActionResult> EditPost(PostDto EditedPost , int postId)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
+            var response = await _socialService.EditPostAsync(EditedPost, postId, Int32.Parse(userId), JWTRole);
+            var res = new ResponseModel();
 
-            if (!ModelState.IsValid)
+            switch (response)
             {
-                return BadRequest(ModelState);
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            var post = await _context.Posts.Include(u => u.User).FirstOrDefaultAsync(u => u.PostId == EditedPost.PostId);  //მაძლევს Users პოსტებით
-
-            if (post == null)
-            {
-                return NotFound("Post Not Found");
-            }
-
-
-            var user = await _context.Users.Include(u => u.Posts).FirstOrDefaultAsync(u => u.UserId == post.User.UserId);  //მაძლევს Users პოსტებით
-
-
-
-            if (user == null)
-            {
-                return BadRequest("User Not Found");
-            }
-
-            if (userId != user.UserId.ToString())
-            {
-                if (JWTRole != "admin")
-                {
-                    return BadRequest("Authorize invalid");
-                }
-            }
-
-
-            user.Posts.Remove(post);
-
-
-
-            post.Subject = EditedPost.Subject;
-            post.Content = EditedPost.Content;
-            post.Video = EditedPost.Video;
-            post.Picture = EditedPost.Picture;
-            post.CreateDate = DateTime.Now;
-            post.User = user;
-
-
-
-            user.Posts ??= new List<PostModel>();
-            user.Posts.Add(post);
-
-            await _context.SaveChangesAsync();
-
-
-
-            return Ok(post);
         }
 
         /// <summary>
@@ -359,47 +275,35 @@ namespace EduSpaceEngine.Controllers
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; // JWT id check
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; // JWT Role
 
-            var post = await _context.Posts.Include(u => u.User).FirstOrDefaultAsync(u => u.PostId == postId); // Fetch the post
+            var response = await _socialService.DeletePostAsync(postId, Int32.Parse(userId), JWTRole);
+            var res = new ResponseModel();
 
-            if (post == null)
+            switch (response)
             {
-                return NotFound();
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            var user = await _context.Users.Include(u => u.Posts).FirstOrDefaultAsync(u => u.UserId == post.User.UserId);
-
-            if (userId != user.UserId.ToString())
-            {
-                if (JWTRole != "admin")
-                {
-                    return BadRequest("Authorize invalid");
-                }
-            }
-
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            // Retrieve comments associated with the post
-            var comments = await _context.Comments.Where(c => c.Post.PostId == postId).ToListAsync();
-
-            // Remove the comments
-            _context.Comments.RemoveRange(comments);
-
-
-            // Retrieve notifications associated with the post
-            var notifications = await _context.Notifications.Where(n => n.PostId == postId).ToListAsync();
-
-            _context.Notifications.RemoveRange(notifications);
-
-            // Remove the post
-            user.Posts.Remove(post);
-            _context.Posts.Remove(post);
-
-            await _context.SaveChangesAsync();
-
-            return Ok("Successfully Deleted");
         }
 
 
@@ -414,7 +318,7 @@ namespace EduSpaceEngine.Controllers
         /// <param name="postid">პოსტის ID, რომელთანაც ასოცირდება კომენტარი.</param>
         /// <param name="userid">კომენტარის შემქმნელი მომხმარებლის ID.</param>
         [HttpPost("Comments/{postid}"), Authorize]
-        public async Task<IActionResult> CreateComment(CommentRequestModel comment, int postid)
+        public async Task<IActionResult> CreateComment(CommentDto comment, int postid)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id check
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
@@ -424,106 +328,38 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            var post = await _context.Posts.Include(u => u.User).FirstOrDefaultAsync(u => u.PostId == postid);
+            var response = await _commentService.CreateCommentAsync(comment, postid, Int32.Parse(userId), JWTRole);
+            var res = new ResponseModel();
 
-            if (post == null)
+            switch (response)
             {
-                return NotFound(); // Handle if the post doesn't exist
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            var user = await _context.Users.Include(u => u.Posts).FirstOrDefaultAsync(u => u.UserId.ToString() == userId);
-
-            if (user == null)
-            {
-                return NotFound(); // Handle if the user doesn't exist
-            }
-
-            if (userId != user.UserId.ToString())
-            {
-                if (JWTRole != "admin")
-                {
-                    return BadRequest("Unauthorized");
-                }
-            }
-
-            var newComment = new CommentModel
-            {
-                Content = comment.Content,
-                Picture = comment.Picture,
-                Video = comment.Video,
-                CreatedAt = DateTime.Now,
-                Post = post,
-                User = user,
-            };
-
-            _context.Comments.Add(newComment);
-            await _context.SaveChangesAsync();
-
-            // Get the newly created comment from the database with its ID
-            var savedComment = await _context.Comments
-                .Include(c => c.User) // Assuming there's a navigation property to the user who made the comment
-                .FirstOrDefaultAsync(c => c.CommentId == newComment.CommentId);
-
-            if(savedComment == null)
-            {
-                return NotFound();
-            }
-
-            var mappedComment = new
-            {
-                commentId = savedComment.CommentId,
-                commentContent = savedComment.Content,
-                commentPicture = savedComment.Picture,
-                commentVideo = savedComment.Video,
-                commentCreatedAt = savedComment.CreatedAt,
-                commentUser = new
-                {
-                    userId = savedComment.User.UserId,
-                    firstname = savedComment.User.FirstName,
-                    lastname = savedComment.User.LastName,
-                    username = savedComment.User.UserName,
-                    picture = savedComment.User.Picture,
-                }
-            };
-
-
-            // Construct notification
-            var notification = new NotificationModel
-            {
-                Message = $"{post.Content}",
-                CreatedAt = DateTime.Now,
-                IsRead = false,
-                PostId = postid,
-                CommentAuthorUsername = user.UserName,
-                CommentAuthorPicture = user.Picture,
-                User = post.User
-            };
-
-            // Send notification to post owner if they are connected
-            var connectedPostOwnerUser = GetConnectionIdForUserId(post.User.UserId.ToString());
-            if (connectedPostOwnerUser != null)
-            {
-                await _NothubContext.Clients.Client(connectedPostOwnerUser).SendAsync("ReceiveNotification", notification);
-            }
-
-            // Send notification to all connected users on the post
-            var connectedUsersOnPost = GetUserIdsAndConnectionIdsForPostId(postid.ToString());
-            if (connectedUsersOnPost != null)
-            {
-                foreach (var u in connectedUsersOnPost)
-                {
-                    var connectionId = u.Item2;
-                    await _ComhubContext.Clients.Client(connectionId).SendAsync("ReceiveComment", mappedComment);
-                }
-            }
-
-            _context.Notifications.Add(notification);
-            await _context.SaveChangesAsync();
-
-            return Ok(savedComment);
         }
 
-        private string GetConnectionIdForUserId(string userId)
+        /*private string GetConnectionIdForUserId(string userId)
         {
             return userConnectionMap.TryGetValue(userId, out var connectionId) ? connectionId : null;
         }
@@ -557,7 +393,7 @@ namespace EduSpaceEngine.Controllers
             }
             return null;
         }
-
+*/
 
         /// <summary>
         /// მიიღეთ კომენტარები კონკრეტული პოსტისთვის.
@@ -567,35 +403,35 @@ namespace EduSpaceEngine.Controllers
         public async Task<IActionResult> GetComments(int postId)
         {
 
-            var comments = await _context.Comments.Where(c => c.Post.PostId == postId).Include(p => p.User).ToListAsync();
+            var response = await _commentService.GetCommentsAsync(postId);
+            var res = new ResponseModel();
 
-            var responseList = new List<object>();
-
-
-            foreach (var comment in comments)
+            switch (response)
             {
-                var postResponse = new
-                {
-                    commentid = comment.CommentId,
-                    content = comment.Content,
-                    video = comment.Video,
-                    picture = comment.Picture,
-                    createdAt = comment.CreatedAt,
-                    user = new
-                    {
-                        userId = comment.User.UserId,
-                        username = comment.User.UserName,
-                        picture = comment.Picture,
-                    },
-                };
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                responseList.Add(postResponse);
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-
-
-            return Ok(responseList);
-
         }
 
 
@@ -606,29 +442,40 @@ namespace EduSpaceEngine.Controllers
         /// <param name="commentId">წაშლილი კომენტარის ID.</param>
         /// <param name="userId">კომენტარს წაშლის მომხმარებლის ID.</param>
         [HttpDelete("Comments/{commentId}"), Authorize]
-        public async Task<IActionResult> DeleteComments(int commentId)
+        public async Task<IActionResult> DeleteComment(int commentId)
         {
             var UserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
-            var comment = await _context.Comments.Include(p => p.User).FirstOrDefaultAsync(p => p.CommentId == commentId);
+           var response = await _commentService.DeleteCommentAsync(commentId, Int32.Parse(UserId), JWTRole);
+            var res = new ResponseModel();
 
-            if (comment.User.UserId.ToString() != UserId)
+            switch (response)
             {
-                return NotFound();
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-
-            // Remove associated notifications
-            var relatedNotifications = await _context.Notifications
-                .Where(n => n.User.UserId.ToString() == UserId && n.Message.Contains($"comment {comment.CommentId}"))
-                .ToListAsync();
-
-            _context.Notifications.RemoveRange(relatedNotifications);
-            _context.Comments.Remove(comment);
-            await _context.SaveChangesAsync();
-
-            return Ok("Removed Successfully");
         }
 
         /// <summary>
@@ -636,7 +483,7 @@ namespace EduSpaceEngine.Controllers
         /// </summary>
         /// <param name="EditedComment">რედაქტირებული კომენტარის ინფორმაცია.</param>
         [HttpPut("Comments"), Authorize]
-        public async Task<IActionResult> EditCommentar(EditCommentReqeustModel EditedComment)
+        public async Task<IActionResult> EditCommentar(CommentDto EditedComment , int commentid)
         {
 
 
@@ -648,49 +495,35 @@ namespace EduSpaceEngine.Controllers
             {
                 return BadRequest(ModelState);
             }
-            var comment = await _context.Comments.Include(u => u.User).FirstOrDefaultAsync(u => u.CommentId == EditedComment.CommentId);  //მაძლევს Users Commentars
+            var response = await _commentService.EditCommentAsync(EditedComment, commentid, Int32.Parse(userId), JWTRole);
+            var res = new ResponseModel();
 
-            if (comment == null)
+            switch (response)
             {
-                return NotFound("Post Not Found");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-
-            var user = await _context.Users.Include(u => u.Posts).FirstOrDefaultAsync(u => u.UserId == comment.User.UserId);  //მაძლევს Users პოსტებით
-
-
-
-            if (user == null)
-            {
-                return BadRequest("User Not Found");
-            }
-
-            if (userId != user.UserId.ToString() || JWTRole != "admin")
-            {
-                return BadRequest("Authorize invalid");
-            }
-
-
-            user.Comments.Remove(comment);
-
-
-
-            comment.Content = EditedComment.Content;
-            comment.Video = EditedComment.Video;
-            comment.Picture = EditedComment.Picture;
-            comment.CreatedAt = DateTime.Now;
-            comment.User = user;
-
-
-
-            user.Comments ??= new List<CommentModel>();
-            user.Comments.Add(comment);
-
-            await _context.SaveChangesAsync();
-
-
-
-            return Ok(comment);
         }
 
 
@@ -709,23 +542,36 @@ namespace EduSpaceEngine.Controllers
             var UserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
-            var user = await _context.Users.Include(u => u.Notifications).FirstOrDefaultAsync(u => u.UserId == userId);
+            var response = await _notificationService.GetUserNotificationsAsync(userId, Int32.Parse(UserId), JWTRole);
 
-            if (user == null)
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                return NotFound("User not found");
-            }
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            if (UserId != userId.ToString())
-            {
-                if (JWTRole != "admin")
-                {
-                    return BadRequest("Authorize invalid");
-                }
-            }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-            var notifications = user.Notifications.OrderByDescending(n => n.CreatedAt).ToList();
-            return Ok(notifications);
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
 
@@ -735,31 +581,35 @@ namespace EduSpaceEngine.Controllers
             var requestingUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
             var requestingUserRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
 
-            var user = await _context.Users.Include(u => u.Notifications).FirstOrDefaultAsync(u => u.UserId == userId);
+            var response = await _notificationService.MarkNotificationsAsRead(userId, Int32.Parse(requestingUserId), requestingUserRole);
+            var res = new ResponseModel();
 
-            if (user == null)
+            switch (response)
             {
-                return NotFound("User not found");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            if (requestingUserId != userId.ToString())
-            {
-                if (requestingUserRole != "admin")
-                {
-                    return BadRequest("Unauthorized");
-                }
-            }
-
-            var notifications = user.Notifications.OrderByDescending(n => n.CreatedAt).ToList();
-
-            foreach (var notification in notifications)
-            {
-                notification.IsRead = true;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(notifications);
         }
 
         /// <summary>
@@ -769,17 +619,35 @@ namespace EduSpaceEngine.Controllers
         [HttpPut("Notifications/{notificationId}")]
         public async Task<IActionResult> MarkNotificationAsRead(int notificationId)
         {
-            var notification = await _context.Notifications.FirstOrDefaultAsync(n => n.NotificationId == notificationId);
+            var response = await _notificationService.MarkNotificationAsRead(notificationId);
+            var res = new ResponseModel();
 
-            if (notification == null)
+            switch (response)
             {
-                return NotFound("Notification not found");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            notification.IsRead = true;
-            await _context.SaveChangesAsync();
-
-            return Ok("Notification marked as read");
         }
     }
 }

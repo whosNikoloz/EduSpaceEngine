@@ -1,24 +1,15 @@
-﻿using EduSpaceEngine.Model.User.LoginRequest;
-using EduSpaceEngine.Model.User.Password;
-using EduSpaceEngine.Model.User;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.Data;
-using System.IdentityModel.Tokens.Jwt;
-using System.Net.Mail;
-using System.Net;
 using System.Security.Claims;
-using System.Security.Cryptography;
-using EduSpaceEngine.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Cors;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Diagnostics.Metrics;
-using System;
-using AutoMapper;
 using Asp.Versioning;
+using EduSpaceEngine.Model;
+using EduSpaceEngine.Dto.User;
+using EduSpaceEngine.Services.Email;
+using EduSpaceEngine.Services.User;
+using EduSpaceEngine.Dto.User.LoginRequest;
+using EduSpaceEngine.Dto.User.Password;
+using GreenDonut;
+using Azure;
 
 namespace EduSpaceEngine.Controllers
 {
@@ -27,22 +18,19 @@ namespace EduSpaceEngine.Controllers
     [Route("api/v{version:apiVersion}/")]
     public class UserController : ControllerBase
     {
-        private readonly DataDbContext _context;
-        private readonly IConfiguration _configuration;
-        private readonly IMapper _mapper;
+        private readonly IUserService _userService;
+        private readonly IEmailService _emailService;
 
-        public UserController(DataDbContext context, IConfiguration configuration,IMapper mapper)
+        public UserController(IEmailService emailService, IUserService userService)
         {
-            _configuration = configuration;
-            _context = context;
-            _mapper = mapper;
+            _userService = userService;
+            _emailService = emailService;
         }
-
 
         [HttpGet("Test")]
         public IActionResult Test()
         {
-            return Ok("v1");
+            return Ok(_userService.Test());
         }
 
         // მოიძიეთ ყველა მომხმარებლის სია.
@@ -51,13 +39,26 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("Users"), Authorize(Roles = "admin")]
         public async Task<IActionResult> GetUsers()
         {
-            return Ok(await _context.Users.ToListAsync());
+            var users = await _userService.GetUsersAsync();
+            if (users == null)
+            {
+                return Ok(new
+                {
+                    status = false,
+                    result = "მომხმარებელები არ მოიძიეთ",
+                });
+            }
+            return Ok(new
+            {
+                status = true,
+                result = users
+            });
         }
 
         // მიიღეთ კონკრეტული მომხმარებლის პროფილი მომხმარებლის სახელით.
         // საჭიროებს ავთენტიფიკაციას.
         // GET api/User/{username}
-        [HttpGet("User/{userid}"), Authorize]
+        [HttpGet("User/{userid}")]
         public async Task<IActionResult> GetUser(int userid)
         {
             if (!ModelState.IsValid)
@@ -65,85 +66,78 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
+            // Call the service method to get the user
+            var response = await _userService.GetUserAsync(userid);
 
-            var user = await _context.Users
-                .Include(u => u.Enrollments)
-                .Include(u => u.Posts)
-                .Include(u => u.Comments)
-                .Include(u => u.Progresses)
-                .FirstOrDefaultAsync(u => u.UserId == userid);
-
-            if (user == null)
+            // Check if there was an error
+            if (response.Error != null)
             {
-                return BadRequest("No User");
-            }
-            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
-            var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
-
-            if(user == null)
-            {
-                return NotFound("UserNotFound");
-            }
-
-            if(user.OAuthProvider != null)
-            {
-                user.Email = $"{user.Email} ({user.OAuthProvider})";
-            }
-            
-
-            string jwttoken = CreateToken(user);
-
-            var response = new
-            {
-                User = new
+                return Ok(new
                 {
-                    userId = user.UserId,
-                    userName = user.UserName,
-                    firstName = user.FirstName,
-                    lastName = user.LastName,
-                    email = user.Email,
-                    phoneNumber = user.PhoneNumber,
-                    picture = user.Picture,
-                    joinedAt = user.VerifiedAt
-                },
-                Token = jwttoken
+                    status = false,
+                    result = "მომხმარებელი არ მოიძიეთ",
+                });
+            }
+
+            // Return the user data and token if everything is fine
+            var responseUser = new
+            {
+                User = response.User,
+                Token = response.Token
             };
 
-            
-            return Ok(response);
+            return Ok(new
+            {
+                status = true,
+                result = responseUser
+            });
         }
 
 
-        [HttpDelete("User/{userid}"), Authorize]
+        [HttpDelete("User/{userid}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteUser(int userid)
         {
-            var user = await _context.Users
-                .Include(u => u.Notifications)  // Include related notifications
-                .Include(u => u.Posts)          // Include related posts
-                    .ThenInclude(p => p.Comments) // Include comments related to each post
-                .FirstOrDefaultAsync(u => u.UserId == userid);
-
-            if (user == null)
+            if (!ModelState.IsValid)
             {
-                return BadRequest("User not Found");
+                return BadRequest(ModelState);
             }
 
-            // Remove notifications
-            _context.Notifications.RemoveRange(user.Notifications);
+            var result = await _userService.DeleteUserAsync(userid);
 
-            // Remove posts and their comments
-            foreach (var post in user.Posts)
+            if (result is NotFoundObjectResult notFoundResult)
             {
-                _context.Comments.RemoveRange(post.Comments);
+                var message = notFoundResult.Value as string;
+
+
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-            _context.Posts.RemoveRange(user.Posts);
 
-            // Remove the user
-            _context.Users.Remove(user);
-
-            await _context.SaveChangesAsync();
-
-            return Ok("User and related entities deleted");
+            if (result is OkObjectResult okResult)
+            {
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
+            }
+            if(result is StatusCodeResult)
+            {
+                return Ok(new
+                {
+                    status = false,
+                    result = "Server 500"
+                });
+            }
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -156,20 +150,22 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            bool emailExists = await _context.Users.AnyAsync(u => (u.Email == request.Email) && u.OAuthProvider == null);
 
-            if (!emailExists)
+            var response = await _userService.CheckEmailLoginAsync(request);
+
+            if (!response)
             {
                 return Ok(new
                 {
-                    successful = false,
-                    error = "ასეთი მეილი არარსებობს"
+                    status = false,
+                    result = "ასეთი მეილი არ არსებობს"
                 });
             }
 
             return Ok(new
             {
-                Successful = true
+                Successful = true,
+                result = "ასეთი მეილი არსებობს"
             });
         }
 
@@ -181,21 +177,21 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            bool emailExists = await _context.Users.AnyAsync(u => (u.Email == request.Email) && u.OAuthProvider == null);
+            var response = await _userService.CheckEmailRegistrationAsync(request);
 
-
-            if (emailExists)
+            if (response)
             {
                 return Ok(new
                 {
-                    successful = false,
-                    error = "ასეთი მეილი უკვე არსებობს"
+                    status = false,
+                    result = "ასეთი მეილი უკვე არსებობს"
                 });
             }
 
             return Ok(new
             {
-                Successful = true
+                status = true,
+                result = "ასეთი მეილი არსებობს"
             });
         }
 
@@ -207,20 +203,22 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            bool usernameExists = await _context.Users.AnyAsync(u => u.UserName == username);
 
-            if (usernameExists)
+            var response = await _userService.CheckUserNameAsync(username);
+
+            if (response)
             {
                 return Ok(new
                 {
-                    successful = false,
-                    error = "სახელი დაკავებულია"
+                    status = false,
+                    result = "სახელი დაკავებულია"
                 });
             }
 
             return Ok(new
             {
-                Successful = true
+                status = true,
+                result = "სახელი დაკავებული არ არის"
             });
         }
 
@@ -234,48 +232,30 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            if (_context.Users.Any(u => (u.Email == request.Email) && u.OAuthProvider == null) || _context.Users.Any(u => u.UserName == request.UserName))
+            ResponseUser response = await _userService.RegisterUserAsync(request);
+
+            if (response.Error != null)
             {
-                return BadRequest("User (Email or Username) already exists.");
+                return Ok(new
+                {
+                    status = false,
+                    result = response.Error
+                });
             }
 
-            CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
-            UserModel user = _mapper.Map<UserRegisterRequest, UserModel>(request);
-            user.OAuthProvider = null;
-            user.OAuthProviderId = null;
-            user.PasswordHash = passwordHash;
-            user.PasswordSalt = passwordSalt;
-            user.VerificationToken = CreateRandomToken();
+            string host = "localhost:7213";
 
-            if (!_context.Users.Any())
+            string verificationLink = Url.ActionLink("VerifyEmail", "User", new { token = response.User.VerificationToken }, Request.Scheme, host);
+
+
+            await _emailService.SendVerificationEmailAsync(response.User.Email, response.User.UserName, verificationLink);
+
+            return Ok(new
             {
-                user.Role = "admin"; // Assign "admin" role
-            }
-            else 
-            {
-                user.Role = "user"; // Assign "user" role
-            }
-
-            try { 
-
-                await _context.Users.AddAsync(user);
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
-                return StatusCode(500, "An error occurred while saving changes.");
-            }
-
-            string host = "185.139.57.56:8081";
-
-            string verificationLink = Url.ActionLink("VerifyEmail", "User", new { token = user.VerificationToken }, Request.Scheme, host);
-
-
-            await SendVerificationEmail(user.Email, user.UserName, verificationLink);
-
-            return Ok("User successfully created. Verification email sent.");
+                status = true,
+                result = "მომხმარებელი წარმატებით შეიქმნა. გასადასახელებლად გამოიგზავნეთ ელ. ფოსტა."
+            });
         }
 
 
@@ -287,83 +267,33 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Check if a user with the same OAuthProvider and OAuthProviderId already exists
-            if (_context.Users.Any(u => u.OAuthProvider == request.oAuthProvider && u.OAuthProviderId == request.oAuthProviderId))
+            var response = await _userService.RegisterOAuthUserAsync(request);
+
+            if (response is BadRequestObjectResult badRequestResult)
             {
-                return BadRequest("OAuth2 User already exists.");
+                var message = badRequestResult.Value as string;
+
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+
             }
 
-            var (firstName, lastName) = ExtractNamesFromUsername(request.username);
-
-            // Generate a unique username based on firstName and lastName
-            var uniqueUsername = GenerateUniqueUsername(firstName, lastName);
-
-
-            UserModel user = _mapper.Map<OAuthUserRegisterRequest, UserModel>(request);
-            user.VerificationToken = CreateRandomToken();
-            user.UserName = uniqueUsername;
-            user.FirstName = firstName;
-            user.LastName = lastName;
-
-
-            if (!_context.Users.Any())
+            if (response is OkObjectResult okResult)
             {
-                user.Role = "admin"; // Assign "admin" role
-                
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
             }
-            else
+            return BadRequest(new
             {
-                user.Role = "user"; // Assign "user" role
-            }
-
-            user.VerifiedAt = DateTime.Now;
-
-            // Save the new user to the database
-
-            try
-            {
-
-                await _context.Users.AddAsync(user);
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
-                return StatusCode(500, "An error occurred while saving changes.");
-            }
-
-            return Ok("OAuth2 User successfully registered.");
-        }
-
-        // Function to generate a unique username based on firstName and lastName
-        private string GenerateUniqueUsername(string firstName, string lastName)
-        {
-            var baseUsername = (firstName.Length > 0 ? firstName[0].ToString() : "") + (lastName.Length > 0 ? lastName : "");
-            var username = baseUsername;
-            var count = 1;
-
-            // Check if the username is already in use, and if so, append a number to make it unique
-            while (_context.Users.Any(u => u.UserName == username))
-            {
-                username = $"{baseUsername}{count}";
-                count++;
-            }
-
-            return username;
-        }
-
-        private (string, string) ExtractNamesFromUsername(string username)
-        {
-            // Split the username into parts based on spaces
-            var nameParts = username.Split(' ');
-
-            // Take the first part as the first name
-            var firstName = nameParts.Length > 0 ? nameParts[0] : "";
-
-            // Take the rest as the last name
-            var lastName = nameParts.Length > 1 ? string.Join(" ", nameParts.Skip(1)) : "";
-
-            return (firstName, lastName);
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
         // ამოიღეთ მომხმარებელი ID-ით.
@@ -372,25 +302,39 @@ namespace EduSpaceEngine.Controllers
         [HttpDelete("Auth/Remove/{userid}"), Authorize(Roles = "admin")]
         public async Task<IActionResult> RemoveUser(int userid)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userid);
-            if(user == null)
+            var repsonse = await _userService.RemoveUserAsync(userid);
+
+            if (repsonse is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("use not Found");
+                var message = notFoundResult.Value as string;
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-
-            try { 
-
-                _context.Users.Remove(user);
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
+            else if (repsonse is StatusCodeResult)
             {
-                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
-                return StatusCode(500, "An error occurred while saving changes.");
+                return Ok(new
+                {
+                    status = false,
+                    result = "Server 500 While Saving"
+                });
             }
 
-
-            return Ok("user Rmeoved");
+            if (repsonse is OkObjectResult okResult)
+            {
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
+            }
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -401,38 +345,25 @@ namespace EduSpaceEngine.Controllers
             {
                 return BadRequest(ModelState);
             }
+            ResponseUser response = await _userService.LoginOAuth2Async(request);
 
-            var user = await _context.Users
-                .Include(u => u.Enrollments)
-                .Include(u => u.Posts)
-                .Include(u => u.Comments)
-                .Include(u => u.Progresses)
-                .FirstOrDefaultAsync(u => u.OAuthProvider == request.OAuthProvider && u.OAuthProviderId == request.OAuthProviderId); // Fix the comparison here
-
-            if (user == null)
+            if(response.Error != null)
             {
-                return BadRequest("User not found.");
+                return Ok(new
+                {
+                    status = false,
+                    result = response.Error
+                });
             }
-            user.Email = user.Email + "(" + user.OAuthProvider + ")";
-
-            // Normally, OAuth2 authentication would have already occurred, and you'd have an access token
-            // and user information from the OAuth2 provider.
-
-            // Instead of checking a password, you can assume that if the user exists and reached this point,
-            // they have successfully authenticated through OAuth2.
-
-            // You can generate a JWT token or another type of authentication token for the user at this point.
-            string jwttoken = CreateToken(user);
-
-            var response = new
-            {
-                Token = jwttoken
-            };
 
             return Ok(new
             {
-                successful = true,
-                response
+                status = true,
+                result = new
+                {
+                    User = response.User,
+                    Token = response.Token
+                }
             });
         }
 
@@ -441,22 +372,27 @@ namespace EduSpaceEngine.Controllers
         // შეამოწმებს თუ Oauth2 მომხმარებელი არსებობს.
         // POST api/Auth/OAuth2Exist
         [HttpPost("Auth/OAuth2Exist")]
-        public async Task<IActionResult> CheckeOatuh2Exist(CheckOauth2ExistsReqeust reqeust)
+        public async Task<IActionResult> CheckOAuth2Exist(CheckOauth2ExistsReqeust reqeust)
         {
 
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.OAuthProvider == reqeust.OAuthProvider && u.OAuthProviderId == reqeust.OAuthProviderId);
-
-            if (user == null)
+            var response = await _userService.CheckOAuth2ExistAsync(reqeust);
+            if(response)
             {
-                return BadRequest(false);
+                return Ok(new
+                {
+                    status = true,
+                    result = "ასეთი მომხმარებელი არსებობს"
+                });
             }
-            return Ok(true);
+            return Ok(new
+            {
+                status = false,
+                result = "ასეთი მომხმარებელი არ არსებობს"
+            });
         }
 
         // შედით ელექტრონული ფოსტით და პაროლით.
@@ -470,45 +406,25 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == request.Email && u.OAuthProvider == null);
-
-            if (user == null)
-            {
-                return NotFound("User not found.");
-            }
-
-            if (!VerifyPasswordHash(request.Password, user.PasswordHash, user.PasswordSalt))
+            ResponseUser response = await _userService.LoginWithEmailAsync(request);
+            if (response.Error != null)
             {
                 return Ok(new
                 {
-                    successful = false,
-                    error = "Wrong Passwrod"
+                    status = false,
+                    result = response.Error
                 });
             }
-
-            if (user.VerifiedAt == DateTime.MinValue)
-            {
-                return Ok(new
-                {
-                    successful = false,
-                    error = "User Not Verified"
-                });
-            }
-
-            string jwttoken = CreateToken(user);
-
-            var response = new
-            {
-                Token = jwttoken
-            };
 
             return Ok(new
             {
-                successful = true,
-                response
+                status = true,
+                result = new
+                {
+                    User = response.User,
+                    Token = response.Token
+                }
             });
-
         }
 
         // შედით მომხმარებლის სახელით და პაროლით.
@@ -521,33 +437,25 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-
-            var user = await _context.Users
-                .Include(u => u.Enrollments)
-                .Include(u => u.Notifications)
-                .Include(u => u.Posts)
-                .Include(u => u.Comments)
-                .Include(u => u.Progresses)
-                .FirstOrDefaultAsync(u => u.UserName == request.UserName);
-
-            if (user == null)
+            ResponseUser response = await _userService.LoginWithUserNameAsync(request);
+            if (response.Error != null)
             {
-                return BadRequest("User not found.");
+                return Ok(new
+                {
+                    status = false,
+                    result = response.Error
+                });
             }
-
-            if (!VerifyPasswordHash(request.Password, user.PasswordHash, user.PasswordSalt))
+            return Ok(new
             {
-                return BadRequest("Wrong password.");
-            }
+                status = true,
+                result = new
+                {
+                    User = response.User,
+                    Token = response.Token
+                }
+            });
 
-            if (user.VerifiedAt == null)
-            {
-                return BadRequest("User not verified.");
-            }
-
-            string token = CreateToken(user);
-
-            return Ok(user);
         }
 
         // შედით ტელეფონის ნომრით და პაროლით.
@@ -560,33 +468,25 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-
-            var user = await _context.Users
-                .Include(u => u.Enrollments)
-                .Include(u => u.Notifications)
-                .Include(u => u.Posts)
-                .Include(u => u.Comments)
-                .Include(u => u.Progresses)
-                .FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber);
-
-            if (user == null)
+            ResponseUser response = await _userService.LoginWithPhoneNumberAsync(request);
+            if (response.Error != null)
             {
-                return BadRequest("User not found.");
+                return Ok(new
+                {
+                    status = false,
+                    result = response.Error
+                });
             }
-
-            if (!VerifyPasswordHash(request.Password, user.PasswordHash, user.PasswordSalt))
+            return Ok(new
             {
-                return BadRequest("Wrong password.");
-            }
+                status = true,
+                result = new
+                {
+                    User = response.User,
+                    Token = response.Token
+                }
+            });
 
-            if (user.VerifiedAt == null)
-            {
-                return BadRequest("User not verified.");
-            }
-
-            string token = CreateToken(user);
-
-            return Ok(user);
         }
 
 
@@ -600,46 +500,52 @@ namespace EduSpaceEngine.Controllers
             {
                 return BadRequest(ModelState);
             }
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.UserId);
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
-            if (user == null)
+            var response = await _userService.ChangeGeneralInfoAsync(request, Int32.Parse(userId), JWTRole);
+
+            if (response is ConflictObjectResult conflictResult)
             {
-                return NotFound("user not found.");
-            }
-            if (userId != user.UserId.ToString())
-            {
-                if (JWTRole != "admin")
+                var message = conflictResult.Value as string;
+
+                return Ok(new
                 {
-                    return BadRequest("Authorize invalid");
-                }
+                    status = false,
+                    result = message
+                });
             }
-
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.UserName == request.UserName);
-            if(existingUser != user && existingUser != null)
+            else if (response is StatusCodeResult)
             {
-                return BadRequest("Username already exists in the database.");
+
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-            
-
-            user.UserName = request.UserName;
-            user.FirstName = request.FirstName;
-            user.LastName = request.LastName;
-            user.PhoneNumber = request.PhoneNumber;
-
-            try
+            if(response is UnauthorizedObjectResult unAuthresult)
             {
-                await _context.SaveChangesAsync();
+                return Ok(new
+                {
+                    status = false,
+                    result = unAuthresult.Value
+                });
             }
-            catch (Exception ex)
+            if (response is OkObjectResult okResult)
             {
-                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
             }
-
-
-            return Ok("Successfully Changed");
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -655,45 +561,59 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == request.UserId);
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
-            if (user == null)
+            var response = await _userService.ChangePasswordAsync(request, Int32.Parse(userId), JWTRole);
+
+            if(response is UnauthorizedObjectResult unAuthresult)
             {
-                return BadRequest("user not found.");
-            }
-            if (userId != user.UserId.ToString())
-            {
-                if (JWTRole != "admin")
+                return Ok(new
                 {
-                    return BadRequest("Authorize invalid");
-                }
+                    status = false,
+                    result = unAuthresult.Value
+                });
             }
-            if (!VerifyPasswordHash(request.OldPassword, user.PasswordHash, user.PasswordSalt))
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("Wrong password.");
+                var message = notFoundResult.Value as string;
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-
-            CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
-
-
-            user.PasswordHash = passwordHash;
-            user.PasswordSalt = passwordSalt;
-            user.PasswordResetToken = null;
-            user.ResetTokenExpires = null;
-
-            try
+            if(response is BadRequestObjectResult badRequestResult)
             {
-                await _context.SaveChangesAsync();
+                var message = badRequestResult.Value as string;
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-            catch (Exception ex)
+            if (response is StatusCodeResult)
             {
-                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-
-
-            return Ok("Successfully Changed");
+            if (response is OkObjectResult okResult)
+            {
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
+            }
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -701,7 +621,7 @@ namespace EduSpaceEngine.Controllers
         // საჭიროებს ავთენტიფიკაციას.
         // POST api/User/ChangeUsernameOrNumber
         [HttpPost("User/ChangeUsernameOrNumber"), Authorize]
-        public async Task<IActionResult> ChangeUsernameOrNumber(UserModel requestuser)
+        public async Task<IActionResult> ChangeUsernameOrPhoneNumber(UserModel requestuser)
         {
             if (!ModelState.IsValid)
             {
@@ -710,33 +630,50 @@ namespace EduSpaceEngine.Controllers
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == requestuser.Email);
+            var response = await _userService.ChangeUsernameOrPhoneNumberAsync(requestuser, Int32.Parse(userId), JWTRole);
 
-            if (user == null)
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("user not found.");
-            }
-            if (userId != user.UserId.ToString())
-            {
-                if (JWTRole != "admin")
+                var message = notFoundResult.Value as string;
+
+                return Ok(new
                 {
-                    return BadRequest("Authorize invalid");
-                }
+                    status = false,
+                    result = message
+                });
             }
 
-            user.UserName = requestuser.UserName;
-            user.PhoneNumber = requestuser.PhoneNumber;
+            if (response is UnauthorizedObjectResult unAuthresult)
+            {
+                return Ok(new
+                {
+                    status = false,
+                    result = unAuthresult.Value
+                });
+            }
+            if (response is StatusCodeResult)
+            {
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+            }
 
-            try
+            if (response is OkObjectResult okResult)
             {
-                await _context.SaveChangesAsync();
-                return Ok("Successfully changed Username or number");
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
             }
-            catch (Exception ex)
+            return BadRequest(new
             {
-                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
-                return StatusCode(500, "An error occurred while saving changes.");
-            }
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -755,32 +692,50 @@ namespace EduSpaceEngine.Controllers
             var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
 
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == imagerequest.UserId);
+            var response = await _userService.UploadUserProfileImageAsync(imagerequest, Int32.Parse(userId), JWTRole);
 
-            if (user == null)
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("user not found.");
-            }
-            if (userId != user.UserId.ToString())
-            {
-                if (JWTRole != "admin")
+                var message = notFoundResult.Value as string;
+
+                return Ok(new
                 {
-                    return BadRequest("Authorize invalid");
-                }
+                    status = false,
+                    result = message
+                });
+            }
+            if(response is UnauthorizedObjectResult unAuthResult)
+            {
+                var message = unAuthResult.Value as string;
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+            }
+            else if (response is StatusCodeResult)
+            {
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
 
-            user.Picture = imagerequest.PictureUrl;
-
-            try
+            if (response is OkObjectResult okResult)
             {
-                await _context.SaveChangesAsync();
-                return Ok();
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
             }
-            catch (Exception ex)
+            return BadRequest(new
             {
-                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
-                return StatusCode(500, "An error occurred while saving changes.");
-            }
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -795,15 +750,16 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.VerificationToken == token);
+            var response = await _userService.VerifyEmailAsync(token);
 
-            if (user == null)
+            if (!response)
             {
-                return BadRequest("Invalid token.");
+                return Ok(new
+                {
+                    status = false,
+                    result = "Verification Failed"
+                });
             }
-
-            user.VerifiedAt = DateTime.Now;
-            await _context.SaveChangesAsync();
 
             string verificationSuccessUrl = "https://edu-space.vercel.app/en/user/auth/verification-successful";
 
@@ -823,26 +779,39 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-
-            if (user == null)
+            var response = await _userService.ForgotPasswordRequestAsync(email);
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("User Not Found");
+                var message = notFoundResult.Value as string;
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+            }
+            else if (response is StatusCodeResult)
+            {
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
 
-
-            user.PasswordResetToken = CreateRandomToken();
-            user.ResetTokenExpires = DateTime.Now.AddDays(1);
-
-            string returnUrl = "https://edu-space.vercel.app/en/user/reset-password";
-
-            string verificationLink = $"{returnUrl}?token={user.PasswordResetToken}";
-
-            await _context.SaveChangesAsync();
-
-            await SendEmail(email, user.UserName, verificationLink);
-
-            return Ok($"You may reset your password now.");
+            if (response is OkObjectResult okResult)
+            {
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
+            }
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -856,25 +825,50 @@ namespace EduSpaceEngine.Controllers
             {
                 return BadRequest(ModelState);
             }
+            var response = await _userService.ResetPasswordAsync(request);
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.PasswordResetToken == request.Token);
-
-            if (user == null || user.ResetTokenExpires < DateTime.Now)
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("Invalid Token");
+                var message = notFoundResult.Value as string;
+
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+            }
+            if (response is StatusCodeResult)
+            {
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+            }
+            if(response is UnauthorizedObjectResult unAuthResult)
+            {
+                var message = unAuthResult.Value as string;
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
 
-
-            CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
-
-            user.PasswordHash = passwordHash;
-            user.PasswordSalt = passwordSalt;
-            user.PasswordResetToken = null;
-            user.ResetTokenExpires = null;
-
-            await _context.SaveChangesAsync();
-
-            return Ok($"Password Succesfully resets.");
+            if (response is OkObjectResult okResult)
+            {
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
+            }
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -888,38 +882,47 @@ namespace EduSpaceEngine.Controllers
             }
 
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
-            var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
-
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId.ToString() == userId);
-
-            if (user == null)
+            var response = await _userService.ChangeEmailRequestAsync(email, Int32.Parse(userId));
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("User Not Found");
+                var message = notFoundResult.Value as string;
 
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-            //პირველად გაიგზავნოს ძველ მაილზე გაფრთხილება
-
-            await SendWarningEmail(user.Email, user.UserName);
-
-
-            if (_context.Users.Any(u => u.Email == email && u.OAuthProvider == null ))
+            else if (response is StatusCodeResult)
             {
-                return BadRequest("ასეთი ანგარიში უკვე რეგისტრირებულია");
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
             }
-
-
-            Random random = new Random();
-
-            int verificationCode = random.Next(1000, 10000);
-
-
-            await SendChangeEmailCode(email, user.UserName, verificationCode);
-
-
-            await _context.SaveChangesAsync();
-
-            return Ok(verificationCode);
+            if(response is ConflictObjectResult confResult)
+            {
+                return Ok(new
+                {
+                    status = false,
+                    result = confResult.Value
+                });
+            }
+            if (response is OkObjectResult okResult)
+            {
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
+            }
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -934,22 +937,47 @@ namespace EduSpaceEngine.Controllers
             }
 
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
-            var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
-
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId.ToString() == userId);
-
-            if (user == null)
+            var response = await _userService.ChangeEmailAsync(email, Int32.Parse(userId));
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("User Not Found");
+                var message = notFoundResult.Value as string;
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+            }
+            if (response is StatusCodeResult)
+            {
+                var message = "Server 500 While Saving";
+                return Ok(new
+                {
+                    status = false,
+                    result = message
+                });
+            }
+            if(response is ConflictObjectResult confResult)
+            {
+                return Ok(new
+                {
+                    status = false,
+                    result = confResult.Value
+                });
             }
 
-
-            user.Email = email;
-
-            await _context.SaveChangesAsync();
-
-            return Ok();
+            if (response is OkObjectResult okResult)
+            {
+                return Ok(new
+                {
+                    status = true,
+                    result = okResult.Value
+                });
+            }
+            return BadRequest(new
+            {
+                status = false,
+                result = "Unexpected Error"
+            });
         }
 
 
@@ -963,476 +991,46 @@ namespace EduSpaceEngine.Controllers
             }
 
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
-            var JWTRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value; //JWT Role
-
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId.ToString() == userId);
-
-            if (user == null)
+            var response = await _userService.ReLoginAsync(password, Int32.Parse(userId));
+            if (response is NotFoundObjectResult notFoundResult)
             {
-                return BadRequest("User Not Found");
-            }
-
-
-            if (!VerifyPasswordHash(password, user.PasswordHash, user.PasswordSalt))
-            {
-                return BadRequest("Wrong password.");
-            }
-
-
-            return Ok();
-        }
-
-
-
-
-        private async Task SendVerificationEmail(string email, string user, string confirmationLink)
-        {
-
-            string messageBody = $@"
-            <!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Strict//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"">
-            <html xmlns=""http://www.w3.org/1999/xhtml"">
-
-            <head>
-              <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-              <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-              <title>Verify your account</title>
-
-              <style>
-                .button {{
-                        display: inline-block;
-                        background-color: #007bff;
-                        color: white !important;
-                        border: none;
-                        border-radius: 20px;
-                        padding: 10px 20px;
-                        text-decoration: none;
-                        cursor: pointer;
-                    }}
-              </style>
-            </head>
-
-
-            <body style=""font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;"">
-              <table role=""presentation""
-                style=""width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; font-family: Arial, Helvetica, sans-serif; background-color: rgb(239, 239, 239);"">
-                <tbody>
-                  <tr>
-                    <td align=""center"" style=""padding: 1rem 2rem; vertical-align: top; width: 100%;"">
-                      <table role=""presentation"" style=""max-width: 600px; border-collapse: collapse; border: 0px; border-spacing: 0px; text-align: left;"">
-                        <tbody>
-                          <tr>
-                            <td style=""padding: 40px 0px 0px;"">
-                              <div style=""text-align: left;"">
-                                <div style=""padding-bottom: 20px;""><img src=""https://firebasestorage.googleapis.com/v0/b/eduspace-a81b5.appspot.com/o/EduSpaceLogo.png?alt=media&token=7b7dc8a5-05d8-4348-9b4c-c19913949c67"" alt=""Company"" style=""width: 56px;""></div>
-                              </div>
-                              <div style=""padding: 20px; background-color: rgb(255, 255, 255); border-radius: 20px;"">
-                                <div style=""color: rgb(0, 0, 0); text-align: center;"">
-                                  <h1 style=""margin: 1rem 0"">👋</h1>
-                                  <h1 style=""margin: 1rem 0"">მოგესალმებით, {user} !</h1>
-                                  <p style=""padding-bottom: 16px"">გმადლობთ, რომ დარეგისტრირდით EduSpace-ზე თქვენი ანგარიშის გასააქტიურებლად, გთხოვთ,დააჭიროთ ქვემოთ მოცემულ ღილაკს</p>
-                                  <a href={confirmationLink} class='button'>გააქტიურება</a>
-                                  <p style=""padding-bottom: 16px"">თუ ამ მისამართის დადასტურება არ მოგითხოვიათ, შეგიძლიათ იგნორირება გაუკეთოთ ამ ელფოსტას.</p>
-                                  <p style=""padding-bottom: 16px"">Thank you, EduSpace Team</p>
-                                </div>
-                              </div>
-                              <div style=""padding-top: 20px; color: rgb(153, 153, 153); text-align: center;"">
-                                <p style=""padding-bottom: 16px"">© 2023 Nikoloza. ყველა უფლება დაცულია</p>
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </body>
-
-            </html>";
-
-            using (MailMessage message = new MailMessage("noreplynika@gmail.com", email))
-            {
-                message.Subject = "EduSpace.ge მომხმარებლის აქტივაცია";
-                message.Body = messageBody;
-                message.IsBodyHtml = true;
-
-                using (SmtpClient smtpClient = new SmtpClient("smtp.gmail.com", 587))
+                var message = notFoundResult.Value as string;
+                return Ok(new
                 {
-                    smtpClient.Credentials = new NetworkCredential("noreplynika@gmail.com", "cdqwvhmdwljietwq");
-                    smtpClient.EnableSsl = true;
-
-                    try
-                    {
-                        await smtpClient.SendMailAsync(message);
-                    }
-                    catch (Exception)
-                    {
-                        // Handle any exception that occurs during the email sending process
-                        // You can log the error or perform other error handling actions
-                    }
-                }
+                    status = false,
+                    result = message
+                });
             }
-        }
-        private async Task SendEmail(string email, string user, string confirmationLink)
-        {
-            string messageBody = $@"
-            <!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Strict//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"">
-            <html xmlns=""http://www.w3.org/1999/xhtml"">
-
-            <head>
-              <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-              <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-              <title>Verify your account</title>
-
-              <style>
-                .button {{
-                        display: inline-block;
-                        background-color: #007bff;
-                        color: white !important;
-                        border: none;
-                        border-radius: 20px;
-                        padding: 10px 20px;
-                        text-decoration: none;
-                        cursor: pointer;
-                    }}
-              </style>
-            </head>
-
-
-            <body style=""font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;"">
-              <table role=""presentation""
-                style=""width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; font-family: Arial, Helvetica, sans-serif; background-color: rgb(239, 239, 239);"">
-                <tbody>
-                  <tr>
-                    <td align=""center"" style=""padding: 1rem 2rem; vertical-align: top; width: 100%;"">
-                      <table role=""presentation"" style=""max-width: 600px; border-collapse: collapse; border: 0px; border-spacing: 0px; text-align: left;"">
-                        <tbody>
-                          <tr>
-                            <td style=""padding: 40px 0px 0px;"">
-                              <div style=""text-align: left;"">
-                                <div style=""padding-bottom: 20px;""><img src=""https://firebasestorage.googleapis.com/v0/b/eduspace-a81b5.appspot.com/o/EduSpaceLogo.png?alt=media&token=7b7dc8a5-05d8-4348-9b4c-c19913949c67"" alt=""Company"" style=""width: 56px;""></div>
-                              </div>
-                              <div style=""padding: 20px; background-color: rgb(255, 255, 255); border-radius: 20px;"">
-                                <div style=""color: rgb(0, 0, 0); text-align: center;"">
-                                  <h1 style=""margin: 1rem 0"">🔒</h1>
-                                  <h1 style=""margin: 1rem 0"">მოგესალმებით, {user}</h1>
-                                  <p style=""padding-bottom: 16px"">თქვენი EduSpace-ს ანგარიშიდან მოთხოვნილია პაროლის აღდგენა. ახალი პაროლის დასაყენებლად გთხოვთ დააჭიროთ პაროლის აღდგენის ღილაკს.</p>
-                                  <a href={confirmationLink} class='button'>პაროლის აღდგენა</a>
-                                  <p style=""padding-bottom: 16px"">თუ პაროლის გადაყენება არ მოგითხოვიათ, შეგიძლიათ უგულებელყოთ ეს ელფოსტა.</p>
-                                  <p style=""padding-bottom: 16px"">Thank you, EduSpace Team</p>
-                                </div>
-                              </div>
-                              <div style=""padding-top: 20px; color: rgb(153, 153, 153); text-align: center;"">
-                                <p style=""padding-bottom: 16px"">© 2023 Nikoloza. ყველა უფლება დაცულია</p>
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </body>
-
-            </html>";
-
-            using (MailMessage message = new MailMessage("noreplynika@gmail.com", email))
+            if (response is StatusCodeResult)
             {
-                message.Subject = "EduSpace.ge ანგარიშის აღდგენა";
-                message.Body = messageBody;
-                message.IsBodyHtml = true;
-
-                using (SmtpClient smtpClient = new SmtpClient("smtp.gmail.com", 587))
+                var message = "Server 500 While Saving";
+                return Ok(new
                 {
-                    smtpClient.Credentials = new NetworkCredential("noreplynika@gmail.com", "cdqwvhmdwljietwq");
-                    smtpClient.EnableSsl = true;
-
-                    try
-                    {
-                        await smtpClient.SendMailAsync(message);
-                    }
-                    catch (Exception)
-                    {
-                        // Handle any exception that occurs during the email sending process
-                        // You can log the error or perform other error handling actions
-                    }
-                }
+                    status = false,
+                    result = message
+                });
             }
-        }
-
-        private async Task SendWarningEmail(string email, string user)
-
-        {
-            
-            string messageBody = $@"
-
-            <!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Strict//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"">
-            <html xmlns=""http://www.w3.org/1999/xhtml"">
-
-            <head>
-              <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-              <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-              <title>Verify your account</title>
-
-              <style>
-
-                .button {{
-                        display: inline-block;
-                        background-color: #007bff;
-                        color: white !important;
-                        border: none;
-                        border-radius: 20px;
-                        padding: 10px 20px;
-                        text-decoration: none;
-                        cursor: pointer;
-
-                    }}
-              </style>
-            </head>
-
-            <body style=""font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;"">
-              <table role=""presentation""
-                style=""width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; font-family: Arial, Helvetica, sans-serif; background-color: rgb(239, 239, 239);"">
-                <tbody>
-                  <tr>
-                    <td align=""center"" style=""padding: 1rem 2rem; vertical-align: top; width: 100%;"">
-                      <table role=""presentation"" style=""max-width: 600px; border-collapse: collapse; border: 0px; border-spacing: 0px; text-align: left;"">
-                        <tbody>
-                          <tr>
-                            <td style=""padding: 40px 0px 0px;"">
-                              <div style=""text-align: left;"">
-                                <div style=""padding-bottom: 20px;""><img src=""https://firebasestorage.googleapis.com/v0/b/eduspace-a81b5.appspot.com/o/EduSpaceLogo.png?alt=media&token=7b7dc8a5-05d8-4348-9b4c-c19913949c67"" alt=""Company"" style=""width: 56px;""></div>
-                              </div>
-                             <div style=""padding: 20px; background-color: rgb(255, 255, 255); border-radius: 20px;"">
-                              <div style=""color: rgb(0, 0, 0); text-align: center;"">
-                                <h1 style=""margin: 1rem 0"">⚠️</h1>
-                                <h1 style=""margin: 1rem 0"">მოგესალმებით, {user} !</h1>
-                                <p style=""padding-bottom: 16px"">ჩვენ შევამჩნიეთ, რომ თქვენ მოითხოვეთ ელფოსტის მისამართის შეცვლა, რომელიც დაკავშირებულია თქვენს EduSpace ანგარიშთან.</p>
-                                <p style=""padding-bottom: 16px"">თუ თქვენ არ მოითხოვეთ ეს ცვლილება, შეგიძლიათ უგულებელყოთ ეს ელფოსტა.</p>
-                                <p style=""padding-bottom: 16px"">Thank you, EduSpace Team</p>
-                              </div>
-                            </div>
-                            <div style=""padding-top: 20px; color: rgb(153, 153, 153); text-align: center;"">
-                              <p style=""padding-bottom: 16px"">© 2023 Nikoloza. All rights reserved.</p>
-                            </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </body>
-            </html>";
-
-
-            using (MailMessage message = new MailMessage("noreplynika@gmail.com", email))
-
+            if(response is BadRequestObjectResult unAuthResult)
             {
-                message.Subject = "EduSpace.ge მომხმარებლის აქტივაცია";
-                message.Body = messageBody;
-                message.IsBodyHtml = true;
-
-                using (SmtpClient smtpClient = new SmtpClient("smtp.gmail.com", 587))
-
+                return Ok(new
                 {
-
-                    smtpClient.Credentials = new NetworkCredential("noreplynika@gmail.com", "cdqwvhmdwljietwq");
-                    smtpClient.EnableSsl = true;
-
-                    try
-                    {
-                        await smtpClient.SendMailAsync(message);
-                    }
-                    catch (Exception)
-                    {
-                        // Handle any exception that occurs during the email sending process
-                        // You can log the error or perform other error handling actions
-                    }
-                }
+                    status = false,
+                    result = unAuthResult.Value
+                });
             }
-        }
-
-
-
-
-
-
-        private async Task SendChangeEmailCode(string email, string user, int randomNumber)
-        {
-            string messageBody = $@"
-
-            <!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Strict//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"">
-            <html xmlns=""http://www.w3.org/1999/xhtml"">
-
-            <head>
-              <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-              <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-              <title>Verify your account</title>
-
-              <style>
-                .button {{
-                        display: inline-block;
-                        background-color: #007bff;
-                        color: white !important;
-                        border: none;
-                        border-radius: 20px;
-                        padding: 10px 20px;
-                        text-decoration: none;
-                        cursor: pointer;
-                    }}
-              </style>
-            </head>
-
-
-            <body style=""font-family: Helvetica, Arial, sans-serif; margin: 0px; padding: 0px; background-color: #ffffff;"">
-              <table role=""presentation""
-                style=""width: 100%; border-collapse: collapse; border: 0px; border-spacing: 0px; font-family: Arial, Helvetica, sans-serif; background-color: rgb(239, 239, 239);"">
-                <tbody>
-                  <tr>
-                    <td align=""center"" style=""padding: 1rem 2rem; vertical-align: top; width: 100%;"">
-                      <table role=""presentation"" style=""max-width: 600px; border-collapse: collapse; border: 0px; border-spacing: 0px; text-align: left;"">
-                        <tbody>
-                          <tr>
-                            <td style=""padding: 40px 0px 0px;"">
-                              <div style=""text-align: left;"">
-                                <div style=""padding-bottom: 20px;""><img src=""https://firebasestorage.googleapis.com/v0/b/eduspace-a81b5.appspot.com/o/EduSpaceLogo.png?alt=media&token=7b7dc8a5-05d8-4348-9b4c-c19913949c67"" alt=""Company"" style=""width: 56px;""></div>
-                              </div>
-
-                              <div style=""padding: 20px; background-color: rgb(255, 255, 255); border-radius: 20px;"">
-                              <div style=""color: rgb(0, 0, 0); text-align: center;"">
-                                <h1 style=""margin: 1rem 0"">👌</h1>
-                                <h1 style=""margin: 1rem 0"">მოგესალმებით, {user} !</h1>
-                                <p style=""padding-bottom: 16px"">გმადლობთ EduSpace-ზე თქვენი ელ.ფოსტის მისამართის განახლებისთვის. თქვენი ახალი ელფოსტის დასადასტურებლად, გთხოვთ, შეიყვანოთ შემდეგი კოდი:</p>
-                                <div  class='button'>{randomNumber}</div>
-                                <p style=""padding-bottom: 16px"">თუ თქვენ არ მოითხოვეთ ეს ცვლილება, შეგიძლიათ უგულებელყოთ ეს ელფოსტა</p>
-                                <p style=""padding-bottom: 16px"">Thank you, EduSpace Team</p>
-                              </div>
-                            </div>
-                            <div style=""padding-top: 20px; color: rgb(153, 153, 153); text-align: center;"">
-                              <p style=""padding-bottom: 16px"">© 2023 Nikoloza. All rights reserved.</p>
-                            </div>
-
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </body>
-
-            </html>";
-
-            using (MailMessage message = new MailMessage("noreplynika@gmail.com", email))
-
+            if (response is OkObjectResult okResult)
             {
-
-                message.Subject = "EduSpace.ge ანგარიშის აღდგენა";
-
-                message.Body = messageBody;
-
-                message.IsBodyHtml = true;
-
-                using (SmtpClient smtpClient = new SmtpClient("smtp.gmail.com", 587))
-
+                return Ok(new
                 {
-
-                    smtpClient.Credentials = new NetworkCredential("noreplynika@gmail.com", "cdqwvhmdwljietwq");
-                    smtpClient.EnableSsl = true;
-
-                    try
-
-                    {
-                        await smtpClient.SendMailAsync(message);
-                    }
-
-                    catch (Exception)
-
-                    {
-                        // Handle any exception that occurs during the email sending process
-                        // You can log the error or perform other error handling actions
-                    }
-
-                }
-
+                    status = true,
+                    result = okResult.Value
+                });
             }
-
-        }
-
-
-
-
-
-
-        private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
-        {
-            using (var hmac = new HMACSHA512())
+            return BadRequest(new
             {
-                passwordSalt = hmac.Key;
-                passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-            }
-        }
-
-        private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
-        {
-            using (var hmac = new HMACSHA512(passwordSalt))
-            {
-                var computedHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-                return computedHash.SequenceEqual(passwordHash);
-            }
-        }
-
-        private string CreateRandomToken()
-        {
-            return Convert.ToHexString(RandomNumberGenerator.GetBytes(64));
-        }
-
-
-        private string CreateToken(UserModel user)
-        {
-            List<Claim> claims;
-            try
-            {
-                claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Email, (user.Email != null ? user.Email : "")),
-                new Claim(ClaimTypes.Name, (user.FirstName != null ? user.FirstName : "")),
-                new Claim(ClaimTypes.Surname, (user.LastName != null ? user.LastName : "")),
-                new Claim(ClaimTypes.NameIdentifier, (user.UserName != null ? user.UserName : "")),
-                new Claim(ClaimTypes.MobilePhone, (user.PhoneNumber != null ? user.PhoneNumber : "") ),
-                new Claim("ProfilePicture", (user.Picture != null ? user.Picture : "")),
-                new Claim("joinedAt", user.VerifiedAt.ToString()),
-                new Claim("Oauth", (user.OAuthProvider == null ? "" : user.OAuthProvider)),
-                new Claim(ClaimTypes.Role, (user.Role != null ? user.Role : "")),
-            };
-            }
-            catch (Exception ex)    
-            {
-                // Log the exception
-                Console.WriteLine($"An error occurred while creating claims: {ex.Message}");
-                // You can choose to throw the exception further if it's not recoverable
-                throw;
-            }
-
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(
-                _configuration.GetSection("AppSettings:Token").Value));
-
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: DateTime.Now.AddHours(1),
-                signingCredentials: creds);
-
-            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-
-            return jwt;
+                status = false,
+                result = "Unexpected Error"
+            });
         }
     }
 }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EduSpaceEngine.Migrations
 {
     [DbContext(typeof(DataDbContext))]
-    [Migration("20240709120801_init")]
+    [Migration("20240910063923_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -340,10 +340,10 @@ namespace EduSpaceEngine.Migrations
                     b.Property<string>("Picture")
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("PostId")
+                    b.Property<int>("PostId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.Property<string>("Video")
@@ -389,6 +389,8 @@ namespace EduSpaceEngine.Migrations
 
                     b.HasKey("NotificationId");
 
+                    b.HasIndex("PostId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Notifications");
@@ -414,7 +416,7 @@ namespace EduSpaceEngine.Migrations
                     b.Property<string>("Subject")
                         .HasColumnType("longtext");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.Property<string>("Video")
@@ -427,7 +429,7 @@ namespace EduSpaceEngine.Migrations
                     b.ToTable("Posts");
                 });
 
-            modelBuilder.Entity("EduSpaceEngine.Model.User.UserModel", b =>
+            modelBuilder.Entity("EduSpaceEngine.Model.UserModel", b =>
                 {
                     b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
@@ -473,6 +475,10 @@ namespace EduSpaceEngine.Migrations
                     b.Property<string>("Picture")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<DateTime?>("ResetTokenExpires")
                         .HasColumnType("datetime(6)");
 
@@ -502,7 +508,7 @@ namespace EduSpaceEngine.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EduSpaceEngine.Model.User.UserModel", "User")
+                    b.HasOne("EduSpaceEngine.Model.UserModel", "User")
                         .WithMany("Enrollments")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -546,16 +552,16 @@ namespace EduSpaceEngine.Migrations
                     b.HasOne("EduSpaceEngine.Model.Learn.LessonModel", "Lesson")
                         .WithMany()
                         .HasForeignKey("LessonId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("EduSpaceEngine.Model.Learn.SubjectModel", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EduSpaceEngine.Model.User.UserModel", "User")
+                    b.HasOne("EduSpaceEngine.Model.UserModel", "User")
                         .WithMany("Progresses")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -627,11 +633,15 @@ namespace EduSpaceEngine.Migrations
                 {
                     b.HasOne("EduSpaceEngine.Model.Social.PostModel", "Post")
                         .WithMany("Comments")
-                        .HasForeignKey("PostId");
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    b.HasOne("EduSpaceEngine.Model.User.UserModel", "User")
+                    b.HasOne("EduSpaceEngine.Model.UserModel", "User")
                         .WithMany("Comments")
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Post");
 
@@ -640,7 +650,13 @@ namespace EduSpaceEngine.Migrations
 
             modelBuilder.Entity("EduSpaceEngine.Model.Social.NotificationModel", b =>
                 {
-                    b.HasOne("EduSpaceEngine.Model.User.UserModel", "User")
+                    b.HasOne("EduSpaceEngine.Model.Social.PostModel", null)
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EduSpaceEngine.Model.UserModel", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -651,9 +667,11 @@ namespace EduSpaceEngine.Migrations
 
             modelBuilder.Entity("EduSpaceEngine.Model.Social.PostModel", b =>
                 {
-                    b.HasOne("EduSpaceEngine.Model.User.UserModel", "User")
+                    b.HasOne("EduSpaceEngine.Model.UserModel", "User")
                         .WithMany("Posts")
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -700,7 +718,7 @@ namespace EduSpaceEngine.Migrations
                     b.Navigation("Comments");
                 });
 
-            modelBuilder.Entity("EduSpaceEngine.Model.User.UserModel", b =>
+            modelBuilder.Entity("EduSpaceEngine.Model.UserModel", b =>
                 {
                     b.Navigation("Comments");
 

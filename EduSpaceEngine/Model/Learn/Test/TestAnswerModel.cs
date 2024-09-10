@@ -10,7 +10,10 @@ namespace EduSpaceEngine.Model.Learn.Test
         public int AnswerId { get; set; }
 
         [Required]
-        public string Option { get; set; }
+        public string Option_en { get; set; }
+
+        [Required]
+        public string Option_ka { get; set; }
 
         public bool IsCorrect { get; set; }
 
