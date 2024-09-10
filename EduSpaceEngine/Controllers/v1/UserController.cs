@@ -31,7 +31,10 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("Test")]
         public IActionResult Test()
         {
-            return Ok(_userService.Test());
+            ResponseModel res = new ResponseModel();
+            res.status = true;
+            res.result = _userService.Test();
+            return Ok(res);
         }
 
         // მოიძიეთ ყველა მომხმარებლის სია.
@@ -41,19 +44,17 @@ namespace EduSpaceEngine.Controllers
         public async Task<IActionResult> GetUsers()
         {
             var users = await _userService.GetUsersAsync();
+            ResponseModel res = new ResponseModel();
             if (users == null)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = "მომხმარებელები არ მოიძიეთ",
-                });
+                res.status = false;
+                res.result = "მომხმარებელები არ მოიძიეთ";
+                return Ok(res);
             }
-            return Ok(new
-            {
-                status = true,
-                result = users
-            });
+
+            res.status = true;
+            res.result = users;
+            return Ok(res);
         }
 
         // მიიღეთ კონკრეტული მომხმარებლის პროფილი მომხმარებლის სახელით.
@@ -70,14 +71,14 @@ namespace EduSpaceEngine.Controllers
             // Call the service method to get the user
             var response = await _userService.GetUserAsync(userid);
 
+            ResponseModel res = new ResponseModel();
+
             // Check if there was an error
             if (response.Error != null)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = "მომხმარებელი არ მოიძიეთ",
-                });
+                res.status = false;
+                res.result = response.Error;
+                return Ok(res);
             }
 
             // Return the user data and token if everything is fine
@@ -87,11 +88,9 @@ namespace EduSpaceEngine.Controllers
                 Token = response.Token
             };
 
-            return Ok(new
-            {
-                status = true,
-                result = responseUser
-            });
+            res.status = true;
+            res.result = responseUser;
+            return Ok(res);
         }
 
 
@@ -106,39 +105,34 @@ namespace EduSpaceEngine.Controllers
 
             var result = await _userService.DeleteUserAsync(userid);
 
-            if (result is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
+            var res = new ResponseModel();
 
+            switch (result)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-            if (result is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            if(result is StatusCodeResult)
-            {
-                return Ok(new
-                {
-                    status = false,
-                    result = "Server 500"
-                });
-            }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -154,21 +148,20 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.CheckEmailLoginAsync(request);
 
+            ResponseModel res = new ResponseModel();
+
             if (!response)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = "ასეთი მეილი არ არსებობს"
-                });
+                res.status = false;
+                res.result = "ასეთი მეილი არ არსებობს";
+                return Ok(res);
             }
 
-            return Ok(new
-            {
-                Successful = true,
-                result = "ასეთი მეილი არსებობს"
-            });
+            res.status = true;
+            res.result = "ასეთი მეილი არსებობს";
+            return Ok(res);
         }
+
 
         [HttpPost("Auth/Register/check-email")]
         public async Task<IActionResult> CheckEmailReg(CheckEmailRequest request)
@@ -180,20 +173,20 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.CheckEmailRegistrationAsync(request);
 
+            ResponseModel res = new ResponseModel();
+
             if (response)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = "ასეთი მეილი უკვე არსებობს"
-                });
+                res.status = false;
+                res.result = "ასეთი მეილი არსებობ";
+                return Ok(res);
             }
 
-            return Ok(new
-            {
-                status = true,
-                result = "ასეთი მეილი არსებობს"
-            });
+            res.status = true;
+            res.result = "ასეთი მეილი არ არსებობს";
+            return Ok(res);
+
+
         }
 
         [HttpGet("Auth/Register/check-username/{username}")]
@@ -207,20 +200,19 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.CheckUserNameAsync(username);
 
+
+            ResponseModel res = new ResponseModel();
+
             if (response)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = "სახელი დაკავებულია"
-                });
+                res.status = false;
+                res.result = "სახელი დაკავებულია";
+                return Ok(res);
             }
 
-            return Ok(new
-            {
-                status = true,
-                result = "სახელი დაკავებული არ არის"
-            });
+            res.status = true;
+            res.result = "სახელი დაკავებული არ არის";
+            return Ok(res);
         }
 
         // ახალი მომხმარებლის რეგისტრაცია.
@@ -235,13 +227,13 @@ namespace EduSpaceEngine.Controllers
 
             ResponseUser response = await _userService.RegisterUserAsync(request);
 
+            ResponseModel res = new ResponseModel();
+
             if (response.Error != null)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = response.Error
-                });
+                res.status = false;
+                res.result = response.Error;
+                return Ok(res);
             }
 
 
@@ -252,11 +244,10 @@ namespace EduSpaceEngine.Controllers
 
             await _emailService.SendVerificationEmailAsync(response.User.Email, response.User.UserName, verificationLink);
 
-            return Ok(new
-            {
-                status = true,
-                result = "მომხმარებელი წარმატებით შეიქმნა. გასადასახელებლად გამოიგზავნეთ ელ. ფოსტა."
-            });
+
+            res.status = true;
+            res.result = "მომხმარებელი წარმატებით შეიქმნა. გასადასახელებლად გამოიგზავნეთ ელ. ფოსტა.";
+            return Ok(res);
         }
 
 
@@ -381,19 +372,21 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
             var response = await _userService.CheckOAuth2ExistAsync(reqeust);
-            if(response)
+
+
+
+            ResponseModel res = new ResponseModel();
+
+            if (response)
             {
-                return Ok(new
-                {
-                    status = true,
-                    result = "ასეთი მომხმარებელი არსებობს"
-                });
+                res.status = true;
+                res.result = "ასეთი მომხმარებელი არსებობს";
+                return Ok(res);
             }
-            return Ok(new
-            {
-                status = false,
-                result = "ასეთი მომხმარებელი არ არსებობს"
-            });
+
+            res.status = false;
+            res.result = "ასეთი მომხმარებელი არ არსებობს";
+            return Ok(res);
         }
 
         // შედით ელექტრონული ფოსტით და პაროლით.
@@ -408,24 +401,22 @@ namespace EduSpaceEngine.Controllers
             }
 
             ResponseUser response = await _userService.LoginWithEmailAsync(request);
+
+            ResponseModel res = new ResponseModel();
             if (response.Error != null)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = response.Error
-                });
-            }
 
-            return Ok(new
+                res.status = false;
+                res.result = response.Error;
+                return Ok(res);
+            }
+        
+            res.status = true;
+            res.result = new
             {
-                status = true,
-                result = new
-                {
-                    User = response.User,
-                    Token = response.Token
-                }
-            });
+                User = response.User,
+                Token = response.Token
+            };
         }
 
         // შედით მომხმარებლის სახელით და პაროლით.
@@ -439,23 +430,21 @@ namespace EduSpaceEngine.Controllers
             }
 
             ResponseUser response = await _userService.LoginWithUserNameAsync(request);
+            ResponseModel res = new ResponseModel();
             if (response.Error != null)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = response.Error
-                });
+
+                res.status = false;
+                res.result = response.Error;
+                return Ok(res);
             }
-            return Ok(new
+
+            res.status = true;
+            res.result = new
             {
-                status = true,
-                result = new
-                {
-                    User = response.User,
-                    Token = response.Token
-                }
-            });
+                User = response.User,
+                Token = response.Token
+            };
 
 
         }
@@ -471,23 +460,21 @@ namespace EduSpaceEngine.Controllers
             }
 
             ResponseUser response = await _userService.LoginWithPhoneNumberAsync(request);
+            ResponseModel res = new ResponseModel();
             if (response.Error != null)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = response.Error
-                });
+
+                res.status = false;
+                res.result = response.Error;
+                return Ok(res);
             }
-            return Ok(new
+
+            res.status = true;
+            res.result = new
             {
-                status = true,
-                result = new
-                {
-                    User = response.User,
-                    Token = response.Token
-                }
-            });
+                User = response.User,
+                Token = response.Token
+            };
 
         }
 
