@@ -417,6 +417,8 @@ namespace EduSpaceEngine.Controllers
                 User = response.User,
                 Token = response.Token
             };
+
+            return Ok(res);
         }
 
         // შედით მომხმარებლის სახელით და პაროლით.
@@ -445,7 +447,7 @@ namespace EduSpaceEngine.Controllers
                 User = response.User,
                 Token = response.Token
             };
-
+            return Ok(res);
 
         }
 
@@ -475,6 +477,8 @@ namespace EduSpaceEngine.Controllers
                 User = response.User,
                 Token = response.Token
             };
+
+            return Ok(res);
 
         }
 
