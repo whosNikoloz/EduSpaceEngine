@@ -5,30 +5,29 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Request;
-using Microsoft.EntityFrameworkCore;
-using EduSpaceEngine.Services.Learn.Course;
-using Azure.Core;
+using EduSpaceEngine.Services.Learn.Subject;
 using EduSpaceEngine.Dto;
+using Azure;
 
 
-namespace EduSpaceEngine.Controllers
+namespace EduSpaceEngine.Controllers.v1.Learn
 {
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/")]
-    public class CourseController : ControllerBase
+    public class SubjectController : ControllerBase
     {
-        private readonly ICourseService _courseService;
+        private readonly ISubjectService _subjectService;
 
-        public CourseController(ICourseService courseService)
+        public SubjectController(ISubjectService subjectService)
         {
-            _courseService = courseService;   
+            _subjectService = subjectService;
         }
 
-        [HttpGet("Courses")]
-        public async Task<IActionResult> Courses()
+        [HttpGet("Subjects")]
+        public async Task<ActionResult<IEnumerable<SubjectModel>>> Subjects()
         {
-            var response = await _courseService.GetAllCoursesAsync();
+            var response = await _subjectService.GetAllSubjectsAsync();
 
             var res = new ResponseModel();
 
@@ -43,48 +42,6 @@ namespace EduSpaceEngine.Controllers
                     res.status = false;
                     res.result = badReq.Value?.ToString();
                     return BadRequest(res);
-
-                case UnauthorizedObjectResult unResult:
-                    res.status = false;
-                    res.result = unResult.Value?.ToString();
-                    return Unauthorized(res);
-
-                case OkObjectResult okResult:
-                    res.status = true;
-                    res.result = okResult.Value;
-                    return Ok(res);
-                default:
-                    res.status = false;
-                    res.result = "Unexpected Error";
-                    return BadRequest(res);
-            }
-        }
-
-
-
-        [HttpGet("Courses/CourseName/{notFormattedCourseName}")]
-        public async Task<IActionResult> CourseFormattedName(string notFormattedCourseName, string lang = "ka")
-        {
-            var response = await _courseService.GetCourseFormattedNameAsync(notFormattedCourseName, lang);
-
-            var res = new ResponseModel();
-
-            switch (response)
-            {
-                case NotFoundObjectResult notFound:
-                    res.status = false;
-                    res.result = notFound.Value?.ToString();
-                    return NotFound(res);
-
-                case BadRequestObjectResult badReq:
-                    res.status = false;
-                    res.result = badReq.Value?.ToString();
-                    return BadRequest(res);
-
-                case UnauthorizedObjectResult unResult:
-                    res.status = false;
-                    res.result = unResult.Value?.ToString();
-                    return Unauthorized(res);
 
                 case OkObjectResult okResult:
                     res.status = true;
@@ -98,17 +55,55 @@ namespace EduSpaceEngine.Controllers
         }
 
         /// <summary>
-        /// ამოიღებს კონკრეტულ კურსს თავისი უნიკალური იდენტიფიკატორი
+        /// ამოიღებს კონკრეტულ საგანს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
-        /// <param name="courseid">კურსის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("Course/{courseName}")]
-        public async Task<IActionResult> Course(string courseName, string lang = "ka")
+        /// <param name="subjectid">სუბიექტის უნიკალური იდენტიფიკატორი.</param>
+        [HttpGet("Subject/{subjectid}")]
+        public async Task<IActionResult> Subject(int subjectid)
+        {
+            var response = await _subjectService.GetSubjectByIdAsync(subjectid);
+
+
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
+        }
+
+        /// <summary>
+        /// ამატებს ახალ საგანს.
+        /// </summary>
+        /// <param name="newsubject">დამატებული ახალი თემის ინფორმაცია.</param>
+        /// <param name="coursename">კურსის სახელწოდება, რომელსაც ეკუთვნის საგანი.</param>
+        [HttpPost("Subject"), Authorize(Roles = "admin")]
+        public async Task<IActionResult> AddSubject(SubjectDto newsubject, int CourseId)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            var response = await _courseService.GetCourseByName(courseName, lang);
+
+            var response = await _subjectService.CreateSubjectAsync(newsubject, CourseId);
+
             var res = new ResponseModel();
 
             switch (response)
@@ -123,11 +118,6 @@ namespace EduSpaceEngine.Controllers
                     res.result = badReq.Value?.ToString();
                     return BadRequest(res);
 
-                case UnauthorizedObjectResult unResult:
-                    res.status = false;
-                    res.result = unResult.Value?.ToString();
-                    return Unauthorized(res);
-
                 case OkObjectResult okResult:
                     res.status = true;
                     res.result = okResult.Value;
@@ -139,21 +129,22 @@ namespace EduSpaceEngine.Controllers
             }
         }
 
-
         /// <summary>
-        /// Adds a new course.
+        /// არედაქტირებს არსებულ საგანს.
         /// </summary>
-        /// <param name="newCourseModel">დამატებული ახალი კურსის ინფორმაცია.</param>
-        [HttpPost("Course")]
+        /// <param name="newsubject">განახლებული ინფორმაცია თემისთვის.</param>
+        /// <param name="subjectid">რედაქტირებადი საგნის უნიკალური იდენტიფიკატორი.</param>
+        [HttpPut("Subjects/{subjectid}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> AddCourse(CourseDto newCourseModel)
+        public async Task<IActionResult> EditSubject(SubjectDto newsubject, int subjectid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _courseService.CreateCourseAsync(newCourseModel);
+            var response = await _subjectService.UpdateSubjectAsync(subjectid, newsubject);
+
 
             var res = new ResponseModel();
 
@@ -168,11 +159,6 @@ namespace EduSpaceEngine.Controllers
                     res.status = false;
                     res.result = badReq.Value?.ToString();
                     return BadRequest(res);
-
-                case UnauthorizedObjectResult unResult:
-                    res.status = false;
-                    res.result = unResult.Value?.ToString();
-                    return Unauthorized(res);
 
                 case OkObjectResult okResult:
                     res.status = true;
@@ -186,20 +172,20 @@ namespace EduSpaceEngine.Controllers
         }
 
         /// <summary>
-        /// არედაქტირებს არსებულ კურსს.
+        /// შლის კონკრეტულ საგანს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
-        /// <param name="newcourse">კურსის განახლებული ინფორმაცია.</param>
-        /// <param name="courseid">რედაქტირებადი კურსის უნიკალური იდენტიფიკატორი.</param>
-        [HttpPut("Courses/{courseid}")]
+        /// <param name="subjectid">წაშლილი საგნის უნიკალური იდენტიფიკატორი.</param>
+        [HttpDelete("Subjects/{subjectid}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> EditCourse(CourseDto newcourse, int courseid)
+        public async Task<IActionResult> DeleteSubject(int subjectid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _courseService.UpdateCourseAsync(courseid, newcourse);
+            var response = await _subjectService.DeleteSubjectAsync(subjectid);
+
             var res = new ResponseModel();
 
             switch (response)
@@ -213,57 +199,6 @@ namespace EduSpaceEngine.Controllers
                     res.status = false;
                     res.result = badReq.Value?.ToString();
                     return BadRequest(res);
-
-                case UnauthorizedObjectResult unResult:
-                    res.status = false;
-                    res.result = unResult.Value?.ToString();
-                    return Unauthorized(res);
-
-                case OkObjectResult okResult:
-                    res.status = true;
-                    res.result = okResult.Value;
-                    return Ok(res);
-                default:
-                    res.status = false;
-                    res.result = "Unexpected Error";
-                    return BadRequest(res);
-            }
-
-
-        }
-
-        /// <summary>
-        /// შლის კონკრეტულ კურსს მისი უნიკალური იდენტიფიკატორის მიხედვით.
-        /// </summary>
-        /// <param name="courseid">კურსის უნიკალური იდენტიფიკატორი, რომელიც უნდა წაიშალოს.</param>
-        [HttpDelete("Courses/{courseid}")]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> DeleteCourse(int courseid)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var response = await _courseService.DeleteCourseAsync(courseid);
-            var res = new ResponseModel();
-
-            switch (response)
-            {
-                case NotFoundObjectResult notFound:
-                    res.status = false;
-                    res.result = notFound.Value?.ToString();
-                    return NotFound(res);
-
-                case BadRequestObjectResult badReq:
-                    res.status = false;
-                    res.result = badReq.Value?.ToString();
-                    return BadRequest(res);
-
-                case UnauthorizedObjectResult unResult:
-                    res.status = false;
-                    res.result = unResult.Value?.ToString();
-                    return Unauthorized(res);
 
                 case OkObjectResult okResult:
                     res.status = true;

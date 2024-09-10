@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using EduSpaceEngine.Data;
 
 
-namespace EduSpaceEngine.Controllers
+namespace EduSpaceEngine.Controllers.v1.Learn
 {
     [ApiController]
     [ApiVersion("1.0")]

@@ -131,11 +131,7 @@ namespace EduSpaceEngine.Services.User
                 }
             }
 
-            // Update user properties
-            user.UserName = request.UserName;
-            user.FirstName = request.FirstName;
-            user.LastName = request.LastName;
-            user.PhoneNumber = request.PhoneNumber;
+            user = _mapper.Map<ChangeGeneralRequest, UserModel>(request, user);
 
             try
             {

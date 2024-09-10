@@ -12,7 +12,7 @@ using System;
 using System.Numerics;
 using System.Security.Claims;
 
-namespace EduSpaceEngine.Controllers
+namespace EduSpaceEngine.Controllers.v1.Learn
 {
     [ApiController]
     [ApiVersion("1.0")]
@@ -180,7 +180,7 @@ namespace EduSpaceEngine.Controllers
                 }
             }
 
-            var progress = await _context.Progress.FirstOrDefaultAsync(u => u.UserId == request.UserId && u.LessonId == request.LessonId );
+            var progress = await _context.Progress.FirstOrDefaultAsync(u => u.UserId == request.UserId && u.LessonId == request.LessonId);
 
             if (progress == null)
             {
@@ -340,7 +340,7 @@ namespace EduSpaceEngine.Controllers
             return Ok("Course complited");
         }
 
-        
+
 
     }
 }

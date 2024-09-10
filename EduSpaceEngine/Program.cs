@@ -118,7 +118,7 @@ builder.Services.AddScoped<DataDbContext>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IStatiFuncs, StaticFuncs>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<ISocialService, SocialService>();
+builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 

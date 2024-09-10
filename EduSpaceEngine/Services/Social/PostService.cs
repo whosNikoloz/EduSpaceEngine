@@ -7,10 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EduSpaceEngine.Services.Social
 {
-    public class SocialService : ISocialService
+    public class PostService : IPostService
     {
         readonly DataDbContext _db;
-        public SocialService(DataDbContext db)
+        public PostService(DataDbContext db)
         {
             _db = db;
         }

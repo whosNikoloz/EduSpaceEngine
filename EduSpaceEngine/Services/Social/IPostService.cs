@@ -7,7 +7,7 @@ using EduSpaceEngine.Dto.Social;
 
 namespace EduSpaceEngine.Services.Social
 {
-    public interface  ISocialService
+    public interface  IPostService
     {
         string Test();
         Task<IActionResult> GetPostsAsync(int page, int pageSize);

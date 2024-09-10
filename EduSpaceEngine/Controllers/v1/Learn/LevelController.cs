@@ -7,7 +7,7 @@ using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Dto;
 
 
-namespace EduSpaceEngine.Controllers
+namespace EduSpaceEngine.Controllers.v1.Learn
 {
     [ApiController]
     [ApiVersion("1.0")]
@@ -18,7 +18,7 @@ namespace EduSpaceEngine.Controllers
 
         public LevelController(ILevelService levelService)
         {
-            _levelService = levelService;   
+            _levelService = levelService;
         }
 
         [HttpGet("Levels")]
