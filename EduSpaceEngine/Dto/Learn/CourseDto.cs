@@ -15,6 +15,6 @@ namespace EduSpaceEngine.Dto.Learn
         public string? Description_en { get; set; }
 
         public string? CourseLogo { get; set; }
-
+        public virtual ICollection<SubjectModel>? Subjects { get; set; } = new List<SubjectModel>();
     }
 }

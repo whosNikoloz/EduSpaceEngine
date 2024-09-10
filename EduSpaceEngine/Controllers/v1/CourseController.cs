@@ -7,6 +7,8 @@ using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Request;
 using Microsoft.EntityFrameworkCore;
 using EduSpaceEngine.Services.Learn.Course;
+using Azure.Core;
+using EduSpaceEngine.Dto;
 
 
 namespace EduSpaceEngine.Controllers
@@ -28,6 +30,34 @@ namespace EduSpaceEngine.Controllers
         {
             var response = await _courseService.GetAllCoursesAsync();
 
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
 
@@ -35,20 +65,36 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("Courses/CourseName/{notFormattedCourseName}")]
         public async Task<IActionResult> CourseFormattedName(string notFormattedCourseName, string lang = "ka")
         {
-            // Determine which column to use based on the language
-            string columnName = $"CourseName_{lang}";
+            var response = await _courseService.GetCourseFormattedNameAsync(notFormattedCourseName, lang);
 
-            var course = await _context.Courses
-                .Where(u => u.FormattedCourseName == notFormattedCourseName)
-                .Select(u => new { CourseName = EF.Property<string>(u, columnName) })
-                .FirstOrDefaultAsync();
+            var res = new ResponseModel();
 
-            if (course == null || string.IsNullOrWhiteSpace(course.CourseName))
+            switch (response)
             {
-                return NotFound("Course Not Found");
-            }
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            return Ok(course.CourseName);
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
         /// <summary>
@@ -58,54 +104,39 @@ namespace EduSpaceEngine.Controllers
         [HttpGet("Course/{courseName}")]
         public async Task<IActionResult> Course(string courseName, string lang = "ka")
         {
-            var course = await _context.Courses
-        .Include(u => u.Level)
-        .Include(u => u.Subjects).ThenInclude(s => s.Lessons)
-        .Include(u => u.Enrollments)
-        .FirstOrDefaultAsync(u => u.FormattedCourseName == courseName);
-
-            if (course == null)
+            if (!ModelState.IsValid)
             {
-                return NotFound("Course Not Found");
+                return BadRequest(ModelState);
             }
+            var response = await _courseService.GetCourseByName(courseName, lang);
+            var res = new ResponseModel();
 
-            // Determine which property to return based on the language for course name and description
-            string courseNameProperty = lang == "en" ? course.CourseName_en : course.CourseName_ka;
-            string descriptionProperty = lang == "en" ? course.Description_en : course.Description_ka;
-
-            // Determine which property to return based on the language for subject name and description
-            Func<SubjectModel, string?> subjectNameSelector = lang == "en" ? (Func<SubjectModel, string?>)(s => s.SubjectName_en) : s => s.SubjectName_ka;
-            Func<SubjectModel, string?> subjectDescriptionSelector = lang == "en" ? (Func<SubjectModel, string?>)(s => s.Description_en) : s => s.Description_ka;
-
-            // Determine which property to return based on the language for lesson name
-            Func<LessonModel, string?> lessonNameSelector = lang == "en" ? (Func<LessonModel, string?>)(l => l.LessonName_en) : l => l.LessonName_ka;
-
-            // Create a new object with language-specific properties
-            var courseDto = new
+            switch (response)
             {
-                CourseId = course.CourseId,
-                CourseName = courseNameProperty,
-                Description = descriptionProperty,
-                FormattedCourseName = course.FormattedCourseName,
-                CourseLogo = course.CourseLogo,
-                Level = course.Level,
-                Subjects = course.Subjects.Select(s => new
-                {
-                    SubjectId = s.SubjectId,
-                    SubjectName = subjectNameSelector(s),
-                    Description = subjectDescriptionSelector(s),
-                    LogoURL = s.LogoURL,
-                    Lessons = s.Lessons.Select(l => new
-                    {
-                        LessonId = l.LessonId,
-                        LessonName = lessonNameSelector(l),
-                        LearnMaterial = l.LearnMaterial
-                    })
-                }),
-                Enrollments = course.Enrollments
-            };
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            return Ok(courseDto);
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
 
@@ -115,41 +146,43 @@ namespace EduSpaceEngine.Controllers
         /// <param name="newCourseModel">დამატებული ახალი კურსის ინფორმაცია.</param>
         [HttpPost("Course")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> AddCourse(NewCourseModel newCourseModel)
+        public async Task<IActionResult> AddCourse(CourseDto newCourseModel)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (_context.Courses.Any(u => u.CourseName_ka == newCourseModel.CourseName_ka))
+            var response = await _courseService.CreateCourseAsync(newCourseModel);
+
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                return BadRequest("Course Already Exists");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            var course = new CourseModel
-            {
-                CourseName_ka = newCourseModel.CourseName_ka,
-                CourseName_en = newCourseModel.CourseName_en,
-                Description_ka = newCourseModel.Description_ka,
-                Description_en = newCourseModel.Description_en,
-                CourseLogo = newCourseModel.CourseLogo,
-                FormattedCourseName = newCourseModel.FormattedCourseName,
-                LevelId = newCourseModel.LevelId
-            };
-
-            _context.Courses.Add(course);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-
-            return Ok(course);
         }
 
         /// <summary>
@@ -159,29 +192,44 @@ namespace EduSpaceEngine.Controllers
         /// <param name="courseid">რედაქტირებადი კურსის უნიკალური იდენტიფიკატორი.</param>
         [HttpPut("Courses/{courseid}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> EditCourse(NewCourseModel newcourse, int courseid)
+        public async Task<IActionResult> EditCourse(CourseDto newcourse, int courseid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var course = await _context.Courses.FirstOrDefaultAsync(u => u.CourseId == courseid);
+            var response = await _courseService.UpdateCourseAsync(courseid, newcourse);
+            var res = new ResponseModel();
 
-            if (course == null)
+            switch (response)
             {
-                return NotFound("Course Not Found");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
 
-            course.CourseName_ka = newcourse.CourseName_ka;
-            course.CourseName_en = newcourse.CourseName_en;
-            course.Description_ka = newcourse.Description_ka;
-            course.Description_en = newcourse.Description_en;
-            course.LevelId = newcourse.LevelId;
 
-            await _context.SaveChangesAsync();
-
-            return Ok(course);
         }
 
         /// <summary>
@@ -197,28 +245,36 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            try
+            var response = await _courseService.DeleteCourseAsync(courseid);
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                var course = await _context.Courses.Include(c => c.Subjects)
-                                                   .ThenInclude(s => s.Lessons)
-                                                   .ThenInclude(l => l.LearnMaterial)
-                                                   .FirstOrDefaultAsync(c => c.CourseId == courseid);
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                if (course == null)
-                {
-                    return NotFound();
-                }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-                _context.Courses.Remove(course);
-                await _context.SaveChangesAsync();
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
 
-                return NoContent();
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            catch (Exception ex)
-            {
-                // Log the exception or handle it in a way that makes sense for your application
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting course: {ex.Message}");
-            }
+
         }
 
     }

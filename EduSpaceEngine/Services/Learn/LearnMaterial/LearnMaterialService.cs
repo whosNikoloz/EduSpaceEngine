@@ -1,5 +1,6 @@
 ﻿using EduSpaceEngine.Data;
 using EduSpaceEngine.Dto.Learn;
+using Microsoft.AspNetCore.Mvc;
 
 namespace EduSpaceEngine.Services.Learn.LearnMaterial
 {
@@ -12,27 +13,27 @@ namespace EduSpaceEngine.Services.Learn.LearnMaterial
             _db = db;
         }
 
-        public Task<LearnMaterialDto> CreateLearnMaterialAsync(LearnMaterialDto learnMaterialDto)
+        public Task<IActionResult> CreateLearnMaterialAsync(LearnMaterialDto learnMaterialDto)
         {
             throw new NotImplementedException();
         }
 
-        public Task<bool> DeleteLearnMaterialAsync(int lessonId)
+        public Task<IActionResult> DeleteLearnMaterialAsync(int lessonId)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<LearnMaterialDto>> GetAllLearnMaterialAsync()
+        public Task<IActionResult> GetAllLearnMaterialAsync()
         {
             throw new NotImplementedException();
         }
 
-        public Task<LearnMaterialDto> GetLearnMaterialByIdAsync(int learnMaterialId)
+        public Task<IActionResult> GetLearnMaterialByIdAsync(int learnMaterialId)
         {
             throw new NotImplementedException();
         }
 
-        public Task<LearnMaterialDto> UpdateLearnMaterialAsync(int learnMaterialId, LearnMaterialDto learnMaterialDto)
+        public Task<IActionResult> UpdateLearnMaterialAsync(int learnMaterialId, LearnMaterialDto learnMaterialDto)
         {
             throw new NotImplementedException();
         }

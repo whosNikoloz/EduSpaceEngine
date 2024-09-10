@@ -95,20 +95,39 @@ namespace EduSpaceEngine.Services.Learn.Course
             return new OkObjectResult(course);
         }
 
-        public async Task<IActionResult> GetCourseFormattedNameAsync(string FormattedCourseName)
+        public async Task<IActionResult> GetCourseByName(string courseName, string lang = "ka")
         {
             var course = await _db.Courses
                 .Include(u => u.Level)
                 .Include(u => u.Subjects).ThenInclude(s => s.Lessons)
                 .Include(u => u.Enrollments)
-                .FirstOrDefaultAsync(u => u.FormattedCourseName == FormattedCourseName);
+                .FirstOrDefaultAsync(u => u.FormattedCourseName == courseName);
 
-            if (course == null)
+            if(course == null)
             {
                 return new NotFoundObjectResult("Course Not Found");
             }
 
-            return new OkObjectResult(course);
+            CourseDto courseDto = _mapper.Map<CourseDto>(course);
+
+            return new OkObjectResult(courseDto);
+        }
+
+        public async Task<IActionResult> GetCourseFormattedNameAsync(string notFormattedCourseName, string lang = "ka")
+        {
+            string columnName = $"CourseName_{lang}";
+
+            var course = await _db.Courses
+                .Where(u => u.FormattedCourseName == notFormattedCourseName)
+                .Select(u => new { CourseName = EF.Property<string>(u, columnName) })
+                .FirstOrDefaultAsync();
+
+            if (course == null || string.IsNullOrWhiteSpace(course.CourseName))
+            {
+                return new NotFoundObjectResult("Course Not Found");
+            }
+
+            return new OkObjectResult(course.CourseName);
         }
 
         public async Task<IActionResult> UpdateCourseAsync(int courseId, CourseDto courseDto)

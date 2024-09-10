@@ -12,7 +12,9 @@ namespace EduSpaceEngine.Services.Learn.Course
 
         Task<IActionResult> GetAllCoursesAsync();
 
-        Task<IActionResult> GetCourseFormattedNameAsync(string FormattedCourseName);
+        Task<IActionResult> GetCourseFormattedNameAsync(string notFormattedCourseName, string lang = "ka");
+
+        Task<IActionResult> GetCourseByName(string courseName, string lang = "ka");
 
         Task<IActionResult> UpdateCourseAsync(int courseId, CourseDto courseDto);
 

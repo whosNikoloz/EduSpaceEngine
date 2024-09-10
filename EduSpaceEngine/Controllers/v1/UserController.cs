@@ -10,6 +10,7 @@ using EduSpaceEngine.Dto.User.LoginRequest;
 using EduSpaceEngine.Dto.User.Password;
 using GreenDonut;
 using Azure;
+using EduSpaceEngine.Dto;
 
 namespace EduSpaceEngine.Controllers
 {
@@ -269,31 +270,34 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.RegisterOAuthUserAsync(request);
 
-            if (response is BadRequestObjectResult badRequestResult)
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                var message = badRequestResult.Value as string;
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
-            }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
         // ამოიღეთ მომხმარებელი ID-ით.
@@ -302,39 +306,36 @@ namespace EduSpaceEngine.Controllers
         [HttpDelete("Auth/Remove/{userid}"), Authorize(Roles = "admin")]
         public async Task<IActionResult> RemoveUser(int userid)
         {
-            var repsonse = await _userService.RemoveUserAsync(userid);
+            var response = await _userService.RemoveUserAsync(userid);
 
-            if (repsonse is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            else if (repsonse is StatusCodeResult)
-            {
-                return Ok(new
-                {
-                    status = false,
-                    result = "Server 500 While Saving"
-                });
-            }
+            var res = new ResponseModel();
 
-            if (repsonse is OkObjectResult okResult)
+            switch (response)
             {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -456,6 +457,7 @@ namespace EduSpaceEngine.Controllers
                 }
             });
 
+
         }
 
         // შედით ტელეფონის ნომრით და პაროლით.
@@ -505,47 +507,34 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.ChangeGeneralInfoAsync(request, Int32.Parse(userId), JWTRole);
 
-            if (response is ConflictObjectResult conflictResult)
-            {
-                var message = conflictResult.Value as string;
+            var res = new ResponseModel();
 
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            else if (response is StatusCodeResult)
+            switch (response)
             {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            if(response is UnauthorizedObjectResult unAuthresult)
-            {
-                return Ok(new
-                {
-                    status = false,
-                    result = unAuthresult.Value
-                });
-            }
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
-            }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -566,54 +555,34 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.ChangePasswordAsync(request, Int32.Parse(userId), JWTRole);
 
-            if(response is UnauthorizedObjectResult unAuthresult)
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                return Ok(new
-                {
-                    status = false,
-                    result = unAuthresult.Value
-                });
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            if (response is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if(response is BadRequestObjectResult badRequestResult)
-            {
-                var message = badRequestResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if (response is StatusCodeResult)
-            {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
-            }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -632,48 +601,34 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.ChangeUsernameOrPhoneNumberAsync(requestuser, Int32.Parse(userId), JWTRole);
 
-            if (response is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
+            var res = new ResponseModel();
 
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            if (response is UnauthorizedObjectResult unAuthresult)
-            {
-                return Ok(new
-                {
-                    status = false,
-                    result = unAuthresult.Value
-                });
-            }
-            if (response is StatusCodeResult)
-            {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -694,48 +649,34 @@ namespace EduSpaceEngine.Controllers
 
             var response = await _userService.UploadUserProfileImageAsync(imagerequest, Int32.Parse(userId), JWTRole);
 
-            if (response is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
+            var res = new ResponseModel();
 
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if(response is UnauthorizedObjectResult unAuthResult)
+            switch (response)
             {
-                var message = unAuthResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            else if (response is StatusCodeResult)
-            {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -780,38 +721,34 @@ namespace EduSpaceEngine.Controllers
             }
 
             var response = await _userService.ForgotPasswordRequestAsync(email);
-            if (response is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            else if (response is StatusCodeResult)
-            {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
+            var res = new ResponseModel();
 
-            if (response is OkObjectResult okResult)
+            switch (response)
             {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -827,48 +764,34 @@ namespace EduSpaceEngine.Controllers
             }
             var response = await _userService.ResetPasswordAsync(request);
 
-            if (response is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
+            var res = new ResponseModel();
 
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if (response is StatusCodeResult)
+            switch (response)
             {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if(response is UnauthorizedObjectResult unAuthResult)
-            {
-                var message = unAuthResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -883,46 +806,34 @@ namespace EduSpaceEngine.Controllers
 
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var response = await _userService.ChangeEmailRequestAsync(email, Int32.Parse(userId));
-            if (response is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
+            var res = new ResponseModel();
 
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            else if (response is StatusCodeResult)
+            switch (response)
             {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            if(response is ConflictObjectResult confResult)
-            {
-                return Ok(new
-                {
-                    status = false,
-                    result = confResult.Value
-                });
-            }
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
-            }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -938,46 +849,34 @@ namespace EduSpaceEngine.Controllers
 
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var response = await _userService.ChangeEmailAsync(email, Int32.Parse(userId));
-            if (response is NotFoundObjectResult notFoundResult)
-            {
-                var message = notFoundResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if (response is StatusCodeResult)
-            {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if(response is ConflictObjectResult confResult)
-            {
-                return Ok(new
-                {
-                    status = false,
-                    result = confResult.Value
-                });
-            }
+            var res = new ResponseModel();
 
-            if (response is OkObjectResult okResult)
+            switch (response)
             {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
 
 
@@ -992,45 +891,34 @@ namespace EduSpaceEngine.Controllers
 
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
             var response = await _userService.ReLoginAsync(password, Int32.Parse(userId));
-            if (response is NotFoundObjectResult notFoundResult)
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                var message = notFoundResult.Value as string;
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            if (response is StatusCodeResult)
-            {
-                var message = "Server 500 While Saving";
-                return Ok(new
-                {
-                    status = false,
-                    result = message
-                });
-            }
-            if(response is BadRequestObjectResult unAuthResult)
-            {
-                return Ok(new
-                {
-                    status = false,
-                    result = unAuthResult.Value
-                });
-            }
-            if (response is OkObjectResult okResult)
-            {
-                return Ok(new
-                {
-                    status = true,
-                    result = okResult.Value
-                });
-            }
-            return BadRequest(new
-            {
-                status = false,
-                result = "Unexpected Error"
-            });
         }
     }
 }
