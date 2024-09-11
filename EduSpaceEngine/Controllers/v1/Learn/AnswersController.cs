@@ -8,6 +8,8 @@ using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.EntityFrameworkCore;
 using EduSpaceEngine.Data;
+using EduSpaceEngine.Services.Learn.Test;
+using EduSpaceEngine.Dto;
 
 
 namespace EduSpaceEngine.Controllers.v1.Learn
@@ -17,13 +19,10 @@ namespace EduSpaceEngine.Controllers.v1.Learn
     [Route("api/v{version:apiVersion}/")]
     public class AnswersController : ControllerBase
     {
-        private readonly DataDbContext _context;
-        private readonly IConfiguration _configuration;
-
-        public AnswersController(DataDbContext context, IConfiguration configuration)
+        private readonly IAnswerService _answerService;
+        public AnswersController(IAnswerService answerService)
         {
-            _configuration = configuration;
-            _context = context;
+            _answerService = answerService;
         }
 
         /// <summary>
@@ -37,18 +36,29 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             {
                 return BadRequest(ModelState);
             }
-
-            var test = await _context.Tests
-                .Include(t => t.Answers)
-                .FirstOrDefaultAsync(t => t.TestId == testId);
-
-            if (test == null)
+            var response = await _answerService.GetAnswerByIdAsync(testId);
+            var res = new ResponseModel();
+            switch (response)
             {
-                return NotFound();
-            }
-            return null;
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            //return CreatedAtAction(nameof(GetTest), new { id = test.TestId }, test);
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
         /// <summary>
@@ -56,7 +66,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="testId">The unique identifier of the test.</param>
         /// <param name="answer">The information of the added answer.</param>
-        [HttpPost("{testId}/answers"), Authorize(Roles = "admin")]
+        [HttpPost("{testId}/answer"), Authorize(Roles = "admin")]
         public async Task<ActionResult<TestModel>> AddAnswerToTest(int testId, TestAnswerDto answer)
         {
             if (!ModelState.IsValid)
@@ -64,42 +74,29 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            var test = await _context.Tests
-                .Include(t => t.Answers)
-                .FirstOrDefaultAsync(t => t.TestId == testId);
-
-            if (test == null)
+            var response = await _answerService.CreateAnswerAsync(answer, testId);
+            var res = new ResponseModel();
+            switch (response)
             {
-                return NotFound();
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            if (test.Answers == null)
-            {
-                test.Answers = new List<TestAnswerModel>();
-            }
-
-            var Answer = new TestAnswerModel
-            {
-                Option_en = answer.Option_en,
-                Option_ka = answer.Option_ka,
-                IsCorrect = answer.IsCorrect,
-                TestId = testId,
-            };
-
-            _context.TestAnswers.Add(Answer);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                // Log the exception or handle it in a way that makes sense for your application
-                // You might inform the user about the concurrency issue and prompt for action
-            }
-            return null;
-
-            //           return CreatedAtAction(nameof(GetTest), new { id = test.TestId }, test);
         }
 
         /// <summary>
@@ -114,30 +111,60 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            try
+            var response = await _answerService.DeleteAnswerAsync(answerid);
+            var res = new ResponseModel();
+            switch (response)
             {
-                var answer = await _context.TestAnswers.FindAsync(answerid);
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                if (answer == null)
-                {
-                    return NotFound();
-                }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-                _context.TestAnswers.Remove(answer);
-                await _context.SaveChangesAsync();
-
-                return Ok("Deleted");
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-            catch (DbUpdateConcurrencyException ex)
+        }
+
+        [HttpGet("{testId}/answer")]
+        public async Task<ActionResult<TestModel>> GetAnswersByTestId(int testId)
+        {
+            if (!ModelState.IsValid)
             {
-                // Log the exception or handle it in a way that makes sense for your application
-                // You might inform the user about the concurrency issue and prompt for action
-                return BadRequest("Concurrency error occurred while deleting the answer.");
+                return BadRequest(ModelState);
             }
-            catch (Exception ex)
+            var response = await _answerService.GetAnswersByTestIdAsync(testId);
+            var res = new ResponseModel();
+            switch (response)
             {
-                // Log any other unexpected exceptions
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting answer: {ex.Message}");
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
         }
     }

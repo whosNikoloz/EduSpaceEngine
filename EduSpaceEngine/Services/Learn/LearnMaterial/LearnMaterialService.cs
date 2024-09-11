@@ -18,9 +18,10 @@ namespace EduSpaceEngine.Services.Learn.LearnMaterial
             _mapper = mapper;
         }
 
-        public async Task<IActionResult> CreateLearnMaterialAsync(LearnMaterialDto learnMaterialDto)
+        public async Task<IActionResult> CreateLearnMaterialAsync(LearnMaterialDto learnMaterialDto, int lessonid)
         {
             var learnMaterial = _mapper.Map<LearnModel>(learnMaterialDto);
+            learnMaterial.LessonId = lessonid;
             try
             {
                 await _db.Learn.AddAsync(learnMaterial);

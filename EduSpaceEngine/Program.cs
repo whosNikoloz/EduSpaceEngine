@@ -130,6 +130,7 @@ builder.Services.AddScoped<ILessonService, LessonService>();
 builder.Services.AddScoped<ILevelService, LevelService>();
 builder.Services.AddScoped<ITestService, TestService>();
 builder.Services.AddScoped<ILearnMaterialService, LearnMaterialService>();
+builder.Services.AddScoped<IAnswerService, AnswerService>();
 
 
 //builder.Services.AddSingleton<NotificationHub>();

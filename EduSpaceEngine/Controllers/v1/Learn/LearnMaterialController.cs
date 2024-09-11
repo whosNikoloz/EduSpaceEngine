@@ -8,6 +8,8 @@ using EduSpaceEngine.Model.Learn.Request;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.EntityFrameworkCore;
 using EduSpaceEngine.Data;
+using EduSpaceEngine.Services.Learn.LearnMaterial;
+using EduSpaceEngine.Dto;
 
 
 namespace EduSpaceEngine.Controllers.v1.Learn
@@ -17,13 +19,11 @@ namespace EduSpaceEngine.Controllers.v1.Learn
     [Route("api/v{version:apiVersion}/")]
     public class LearnMateriaController : ControllerBase
     {
-        private readonly DataDbContext _context;
-        private readonly IConfiguration _configuration;
+        private readonly ILearnMaterialService _learnMaterialService;
 
-        public LearnMateriaController(DataDbContext context, IConfiguration configuration)
+        public LearnMateriaController(ILearnMaterialService learnMaterialService)
         {
-            _configuration = configuration;
-            _context = context;
+            _learnMaterialService = learnMaterialService;
         }
 
         /// <summary>
@@ -32,7 +32,30 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         [HttpGet("LearnMaterials")]
         public async Task<ActionResult<IEnumerable<LearnModel>>> GetLearns()
         {
-            return await _context.Learn.Include(t => t.Test).ThenInclude(t => t.Answers).ToListAsync();
+            var response = await _learnMaterialService.GetAllLearnMaterialAsync();
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
 
@@ -48,18 +71,30 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            var lessons = await _context.Learn
-                .Include(t => t.Test)
-                    .ThenInclude(t => t.Answers) // Include Answers
-                .Where(t => t.LessonId == LessonId)
-                .ToListAsync();
+            var response = await _learnMaterialService.GetLearnMateriasByLessonId(LessonId);
+            var res = new ResponseModel();
 
-            if (lessons == null || lessons.Count == 0)
+            switch (response)
             {
-                return NotFound();
-            }
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            return Ok(lessons);
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
         /// <summary>
@@ -74,17 +109,30 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            var learn = await _context.Learn
-                .Include(t => t.Test)
-                    .ThenInclude(t => t.Answers) // Include Answers
-                .FirstOrDefaultAsync(t => t.LearnId == id);
+            var response = await _learnMaterialService.GetLearnMaterialByIdAsync(id);
+            var res = new ResponseModel();
 
-            if (learn == null)
+            switch (response)
             {
-                return NotFound();
-            }
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-            return learn;
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
         }
 
         /// <summary>
@@ -101,32 +149,30 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            var lesson = await _context.Lessons.FirstOrDefaultAsync(u => u.LessonId == LessonId);
+            var response = await _learnMaterialService.CreateLearnMaterialAsync(learn, LessonId);
+            var res = new ResponseModel();
 
-            if (lesson == null)
+            switch (response)
             {
-                return NotFound();
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            if (_context.Learn.Any(u => u.LearnName_ka == learn.LearnName_ka))
-            {
-                return BadRequest("LearnMaterial Already Exists");
-            }
-
-            var Learn = new LearnModel
-            {
-                LearnName_ka = learn.LearnName_ka,
-                LearnName_en = learn.LearnName_en,
-                Content_en = learn.Content_en,
-                Content_ka = learn.Content_ka,
-                Code = learn.Code,
-                LessonId = lesson.LessonId,
-            };
-
-            _context.Learn.Add(Learn);
-            await _context.SaveChangesAsync();
-
-            return Ok(Learn);
         }
 
         /// <summary>
@@ -135,22 +181,37 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// <param name="id">რედაქტირებადი სასწავლო მასალის უნიკალური იდენტიფიკატორი.</param>
         /// <param name="learn">სასწავლო მასალის განახლებული ინფორმაცია.</param>
         [HttpPut("LearnMaterial/{id}"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> PutLearn(int id, LearnModel learn)
+        public async Task<IActionResult> PutLearn(int id, LearnMaterialDto learn)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (id != learn.LearnId)
+            var response = await _learnMaterialService.UpdateLearnMaterialAsync(id, learn);
+            var res = new ResponseModel();
+
+            switch (response)
             {
-                return BadRequest();
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
-
-            _context.Entry(learn).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
         }
 
         /// <summary>
@@ -165,24 +226,28 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                 return BadRequest(ModelState);
             }
 
-            try
+            var response = await _learnMaterialService.DeleteLearnMaterialAsync(id);
+            var res = new ResponseModel();
+            switch (response)
             {
-                var learn = await _context.Learn.FindAsync(id);
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
 
-                if (learn == null)
-                {
-                    return NotFound();
-                }
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
 
-                _context.Learn.Remove(learn);
-                await _context.SaveChangesAsync();
-
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                // Log the exception or handle it in a way that makes sense for your application
-                return StatusCode(StatusCodes.Status500InternalServerError, $"Error deleting learn material: {ex.Message}");
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
             }
         }
 

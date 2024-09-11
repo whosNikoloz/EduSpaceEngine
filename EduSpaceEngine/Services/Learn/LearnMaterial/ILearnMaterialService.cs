@@ -5,7 +5,7 @@ namespace EduSpaceEngine.Services.Learn.LearnMaterial
 {
     public interface ILearnMaterialService
     {
-        Task<IActionResult> CreateLearnMaterialAsync(LearnMaterialDto learnMaterialDto);
+        Task<IActionResult> CreateLearnMaterialAsync(LearnMaterialDto learnMaterialDto, int lessonid);
 
         Task<IActionResult> GetLearnMaterialByIdAsync(int learnMaterialId);
 
