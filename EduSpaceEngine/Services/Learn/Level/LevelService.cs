@@ -87,12 +87,18 @@ namespace EduSpaceEngine.Services.Learn.Level
 
         public async Task<IActionResult> UpdateLevelAsync(int levelId, LevelDto levelDto)
         {
-            var level = await _db.Levels.FirstOrDefaultAsync(u => u.LevelId == levelId);
+            var levelEntity = await _db.Levels.FirstOrDefaultAsync(u => u.LevelId == levelId);
 
-            level  = _mapper.Map<LevelModel>(levelDto);
+            if (levelEntity == null)
+            {
+                return new NotFoundObjectResult("Level Not Found");
+            }
+
+            _mapper.Map(levelDto, levelEntity);
 
             try
             {
+                _db.Levels.Update(levelEntity);
                 await _db.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -100,7 +106,7 @@ namespace EduSpaceEngine.Services.Learn.Level
                 return new BadRequestObjectResult(ex.Message);
             }
 
-            return new OkObjectResult(level);
+            return new OkObjectResult(levelEntity);
         }
     }
 }
