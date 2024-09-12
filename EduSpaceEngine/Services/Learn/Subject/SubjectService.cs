@@ -21,6 +21,11 @@ namespace EduSpaceEngine.Services.Learn.Subject
 
         public async Task<IActionResult> GetSubjectsByCourseIdAsync(int courseId)
         {
+            if(!_db.Courses.Any(u => u.CourseId == courseId))
+            {
+                return new NotFoundObjectResult("Course Not Found");
+            }
+
             var subjects = await _db.Subjects
                 .Include(u => u.Course)
                 .Where(u => u.CourseId == courseId)
@@ -113,8 +118,7 @@ namespace EduSpaceEngine.Services.Learn.Subject
             {
                 return new NotFoundObjectResult("Subject Not Found");
             }
-            subject = _mapper.Map<SubjectModel>(subjectDto);
-
+            _mapper.Map(subjectDto, subject);
             try
             {
                 await _db.SaveChangesAsync();
