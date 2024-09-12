@@ -46,6 +46,7 @@ namespace EduSpaceEngine.Services.Static
                 new Claim("joinedAt", user.VerifiedAt.ToString()),
                 new Claim("Oauth", user.OAuthProvider == null ? "" : user.OAuthProvider),
                 new Claim(ClaimTypes.Role, user.Role != null ? user.Role : ""),
+                new Claim("Plan", user.Plan != null ? user.Plan : ""),
             };
             }
             catch (Exception ex)
@@ -57,8 +58,12 @@ namespace EduSpaceEngine.Services.Static
             }
 
             var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(
-                _configuration.GetSection("Token").Value));
+                _configuration.GetSection("AppSettings:Token").Value));
 
+            if(key == null)
+            {
+                throw new Exception("Key is null");
+            }
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
             var token = new JwtSecurityToken(
