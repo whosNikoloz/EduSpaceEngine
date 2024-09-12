@@ -5,15 +5,15 @@ namespace EduSpaceEngine.Services.Learn.Test
 {
     public interface IAnswerService
     {
-        Task<IActionResult> CreateAnswerAsync(TestAnswerDto answerDto, int TestId);
+        Task<IActionResult> CreateAnswerAsync(TestAnswerDto answerDto, int testid);
 
-        Task<IActionResult> GetAnswerByIdAsync(int answerId);
+        Task<IActionResult> GetAnswerByIdAsync(int answerid);
 
         Task<IActionResult> GetAllAnswerAsync();
 
-        Task<IActionResult> UpdateAnswerAsync(int answerId, TestAnswerDto answerDto);
+        Task<IActionResult> UpdateAnswerAsync(int answerid, TestAnswerDto answerDto);
 
-        Task<IActionResult> DeleteAnswerAsync(int answerId);
+        Task<IActionResult> DeleteAnswerAsync(int answerid);
 
         Task<IActionResult> GetAnswersByTestIdAsync(int testId);
     }

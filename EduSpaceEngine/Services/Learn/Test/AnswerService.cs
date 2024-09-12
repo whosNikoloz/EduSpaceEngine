@@ -22,6 +22,10 @@ namespace EduSpaceEngine.Services.Learn.Test
 
         public async Task<IActionResult> GetAnswersByTestIdAsync(int testId)
         {
+            if(!_db.Tests.Any(t => t.TestId == testId))
+            {
+                return new NotFoundObjectResult("Test not found");
+            }
             var answers = await _db.TestAnswers.Where(t => t.TestId == testId).ToListAsync();
             if (answers == null)
             {
@@ -30,9 +34,13 @@ namespace EduSpaceEngine.Services.Learn.Test
             return new OkObjectResult(answers);
         }
 
-        public async Task<IActionResult> CreateAnswerAsync(TestAnswerDto answerDto, int TestId)
+        public async Task<IActionResult> CreateAnswerAsync(TestAnswerDto answerDto, int testid)
         {
-            var test = await _db.Tests.FirstOrDefaultAsync(u => u.TestId == TestId);
+            if(!_db.Tests.Any(t => t.TestId == testid))
+            {
+                return new NotFoundObjectResult("Test not found");
+            }
+            var test = await _db.Tests.FirstOrDefaultAsync(u => u.TestId == testid);
 
             if (test == null)
             {
@@ -42,7 +50,7 @@ namespace EduSpaceEngine.Services.Learn.Test
             try
             {
                 TestAnswerModel newAnswer = _mapper.Map<TestAnswerModel>(answerDto);
-                newAnswer.TestId = TestId;
+                newAnswer.TestId = testid;
 
                 _db.TestAnswers.Add(newAnswer);
                 await _db.SaveChangesAsync();
@@ -106,10 +114,9 @@ namespace EduSpaceEngine.Services.Learn.Test
             {
                 return new NotFoundObjectResult("Test not found");
             }
-
             try
             {
-                answer = _mapper.Map<TestAnswerModel>(answerDto);
+                _mapper.Map(answerDto, answer);
                 _db.TestAnswers.Update(answer);
                 _db.SaveChanges();
                 return new OkObjectResult(answer);
