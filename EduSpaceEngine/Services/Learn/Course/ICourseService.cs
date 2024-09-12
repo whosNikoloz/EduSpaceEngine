@@ -6,7 +6,7 @@ namespace EduSpaceEngine.Services.Learn.Course
     public interface ICourseService
     {
 
-        Task<IActionResult> CreateCourseAsync(CourseDto courseDto);
+        Task<IActionResult> CreateCourseAsync(CourseDto courseDto, int levelId);
 
         Task<IActionResult> GetCourseByIdAsync(int courseId);
 

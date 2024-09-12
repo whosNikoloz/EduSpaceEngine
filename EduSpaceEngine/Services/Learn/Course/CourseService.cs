@@ -24,6 +24,11 @@ namespace EduSpaceEngine.Services.Learn.Course
 
         public async Task<IActionResult> GetCoursesByLevelAsync(int LevelId)
         {
+            var levelExists = _db.Levels.Any(u => u.LevelId == LevelId);
+            if (!levelExists) 
+            {
+                return new NotFoundObjectResult("Level Not Found");    
+            }
             var courses = await _db.Courses
                 .Include(u => u.Level)
                 .Where(u => u.LevelId == LevelId)
@@ -36,15 +41,20 @@ namespace EduSpaceEngine.Services.Learn.Course
 
         }
 
-        public async Task<IActionResult> CreateCourseAsync(CourseDto courseDto)
+        public async Task<IActionResult> CreateCourseAsync(CourseDto courseDto , int levelId)
         {
             if (_db.Courses.Any(u => u.CourseName_ka == courseDto.CourseName_ka))
             {
                 return new BadRequestObjectResult("Course Already Exists");
             }
+            var levelExists = _db.Levels.Any(u => u.LevelId == levelId);
+            if(!levelExists)
+            {
+                return new NotFoundObjectResult("Level Not Found");
+            }
 
             CourseModel courseModel = _mapper.Map<CourseModel>(courseDto);
-
+            courseModel.LevelId = levelId;
             _db.Courses.Add(courseModel);
 
             try
@@ -76,7 +86,7 @@ namespace EduSpaceEngine.Services.Learn.Course
             {
                 return new BadRequestObjectResult("Error Deleting Course");
             }
-            return new OkObjectResult(course);
+            return new OkObjectResult("Deleted Course");
 
         }
 
@@ -154,7 +164,7 @@ namespace EduSpaceEngine.Services.Learn.Course
             }
             try
             {
-                course = _mapper.Map<CourseModel>(courseDto);
+                _mapper.Map(courseDto, course);
                 await _db.SaveChangesAsync();
             }
             catch(Exception)

@@ -179,16 +179,16 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// Adds a new course.
         /// </summary>
         /// <param name="newCourseModel">დამატებული ახალი კურსის ინფორმაცია.</param>
-        [HttpPost("Course")]
+        [HttpPost("Course/{levelid}")]
         [Authorize(Roles = "admin")]
-        public async Task<IActionResult> AddCourse(CourseDto newCourseModel)
+        public async Task<IActionResult> AddCourse(CourseDto newCourseModel,int levelid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _courseService.CreateCourseAsync(newCourseModel);
+            var response = await _courseService.CreateCourseAsync(newCourseModel, levelid);
 
             var res = new ResponseModel();
 
