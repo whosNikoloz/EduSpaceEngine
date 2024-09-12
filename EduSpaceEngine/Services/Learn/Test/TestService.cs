@@ -4,7 +4,6 @@ using EduSpaceEngine.Dto.Learn;
 using EduSpaceEngine.Model.Learn.Test;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace EduSpaceEngine.Services.Learn.Test
 {
@@ -21,6 +20,10 @@ namespace EduSpaceEngine.Services.Learn.Test
 
         public async Task<IActionResult> GetTestsByLearnIdAsync(int learnId)
         {
+            if(!_db.Learn.Any(l => l.LearnId == learnId))
+            {
+                return new NotFoundObjectResult("Learn not found");
+            }
             var tests = await _db.Tests.Where(t => t.LearnId == learnId).ToListAsync();
             if (tests == null)
             {
@@ -29,9 +32,13 @@ namespace EduSpaceEngine.Services.Learn.Test
             return new OkObjectResult(tests);
         }
 
-        public async Task<IActionResult> CreateTestlAsync(TestDto testDto , int LearnId)
+        public async Task<IActionResult> CreateTestAsync(TestDto testDto , int learnid)
         {
-            var learn = await _db.Learn.FirstOrDefaultAsync(u => u.LearnId == LearnId);
+            if(!_db.Learn.Any(l => l.LearnId == learnid))
+            {
+                return new NotFoundObjectResult("Learn not found");
+            }
+            var learn = await _db.Learn.FirstOrDefaultAsync(u => u.LearnId == learnid);
 
             if (learn == null)
             {
@@ -41,15 +48,13 @@ namespace EduSpaceEngine.Services.Learn.Test
             try
             {
                 TestModel newTest = _mapper.Map<TestModel>(testDto);
-                newTest.LearnId = LearnId;
+                newTest.LearnId = learnid;
 
                 _db.Tests.Add(newTest);
                 await _db.SaveChangesAsync();
 
-                // Set the Learn's TestId to the newly created test's ID
                 learn.TestId = newTest.TestId;
 
-                // Update the Learn entity with the TestId change
                 _db.Learn.Update(learn);
                 await _db.SaveChangesAsync();
 
@@ -115,7 +120,7 @@ namespace EduSpaceEngine.Services.Learn.Test
 
             try
             {
-                test = _mapper.Map<TestModel>(testDto);
+                _mapper.Map(testDto, test);
                 _db.Tests.Update(test);
                 _db.SaveChanges();
                 return new OkObjectResult(test);

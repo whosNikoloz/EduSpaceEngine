@@ -69,14 +69,14 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ ტესტს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="id">ტესტის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("Tests/{id}")]
-        public async Task<ActionResult<TestModel>> GetTest(int id)
+        [HttpGet("Tests/{testid}")]
+        public async Task<ActionResult<TestModel>> GetTest(int testid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            var response = await _testService.GetTestByIdAsync(id);
+            var response = await _testService.GetTestByIdAsync(testid);
 
             var res = new ResponseModel();
 
@@ -105,14 +105,14 @@ namespace EduSpaceEngine.Controllers.v1.Learn
 
         }
 
-        [HttpGet("TestsByLearn/{LearnId}")]
-        public async Task<ActionResult<IEnumerable<TestModel>>> GetTestsByLearn(int LearnId)
+        [HttpGet("TestsByLearn/{learnid}")]
+        public async Task<ActionResult<IEnumerable<TestModel>>> GetTestsByLearn(int learnid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            var response = await _testService.GetTestsByLearnIdAsync(LearnId);
+            var response = await _testService.GetTestsByLearnIdAsync(learnid);
 
             var res = new ResponseModel();
 
@@ -142,15 +142,15 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამატებს ახალ ტესტს.
         /// </summary>
         /// <param name="test">დამატებული ახალი ტესტის ინფორმაცია.</param>
-        [HttpPost("Tests/{LearnId}"), Authorize(Roles = "admin")]
-        public async Task<ActionResult<TestModel>> PostTest(TestDto test, int LearnId)
+        [HttpPost("Tests/{learnid}"), Authorize(Roles = "admin")]
+        public async Task<ActionResult<TestModel>> PostTest(TestDto test, int learnid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _testService.CreateTestlAsync(test, LearnId);
+            var response = await _testService.CreateTestAsync(test, learnid);
             var res = new ResponseModel();
 
             switch (response)
@@ -181,15 +181,15 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="id">რედაქტირებადი ტესტის უნიკალური იდენტიფიკატორი.</param>
         /// <param name="test">ტესტის განახლებული ინფორმაცია.</param>
-        [HttpPut("Tests/{id}"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> PutTest(int id, TestDto test)
+        [HttpPut("Tests/{testid}"), Authorize(Roles = "admin")]
+        public async Task<IActionResult> PutTest(int testid, TestDto test)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _testService.UpdateTestAsync(id, test);
+            var response = await _testService.UpdateTestAsync(testid, test);
             var res = new ResponseModel();
 
             switch (response)
@@ -219,14 +219,14 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// შლის კონკრეტულ ტესტს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="id">წაშლილი ტესტის უნიკალური იდენტიფიკატორი.</param>
-        [HttpDelete("Tests/{id}"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> DeleteTest(int id)
+        [HttpDelete("Tests/{testid}"), Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeleteTest(int testid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            var response = await _testService.DeleteTestAsync(id);
+            var response = await _testService.DeleteTestAsync(testid);
             var res = new ResponseModel();
             switch (response)
             {
