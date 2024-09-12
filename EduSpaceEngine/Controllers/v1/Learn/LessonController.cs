@@ -138,15 +138,15 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpPost("Lesson"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> AddLesson(LessonDto newlesson, string subjectname_en)
+        [HttpPost("Lesson/{subjectid}"), Authorize(Roles = "admin")]
+        public async Task<IActionResult> AddLesson(LessonDto newlesson, int subjectid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
             
-            var response = await _lessonService.CreateLessonAsync(newlesson, subjectname_en);
+            var response = await _lessonService.CreateLessonAsync(newlesson, subjectid);
 
             var res = new ResponseModel();
 
@@ -217,7 +217,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpDelete("Lessons/{lesson}")]
+        [HttpDelete("Lessons/{lessonid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteLesson(int lessonid)
         {

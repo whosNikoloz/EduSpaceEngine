@@ -207,11 +207,19 @@ namespace EduSpaceEngine.Migrations
                     b.Property<string>("Code")
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Content")
+                    b.Property<string>("Content_en")
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("LearnName")
+                    b.Property<string>("Content_ka")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("LearnName_en")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("LearnName_ka")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -242,7 +250,11 @@ namespace EduSpaceEngine.Migrations
                     b.Property<bool>("IsCorrect")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("Option")
+                    b.Property<string>("Option_en")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Option_ka")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -265,19 +277,33 @@ namespace EduSpaceEngine.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("TestId"));
 
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Hint")
+                    b.Property<string>("Hint_en")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Instruction")
+                    b.Property<string>("Hint_ka")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Instruction_en")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Instruction_ka")
                         .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<int>("LearnId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Question")
+                    b.Property<string>("Question_en")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Question_ka")
                         .IsRequired()
                         .HasColumnType("longtext");
 

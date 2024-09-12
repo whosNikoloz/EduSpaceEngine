@@ -20,6 +20,10 @@ namespace EduSpaceEngine.Services.Learn.Lesson
 
         public async Task<IActionResult> GetLessonsBySubjectId(int subjectId)
         {
+            if (!_db.Subjects.Any(u => u.SubjectId == subjectId))
+            {
+                return new NotFoundObjectResult("Subject Not Found");
+            }
             var lessons = await _db.Lessons
                 .Include(u => u.Subject)
                 .Where(u => u.SubjectId == subjectId)
@@ -32,10 +36,10 @@ namespace EduSpaceEngine.Services.Learn.Lesson
             return new OkObjectResult(lessons);
         }
 
-        public async Task<IActionResult> CreateLessonAsync(LessonDto lessonDto, string subjectname_en)
+        public async Task<IActionResult> CreateLessonAsync(LessonDto lessonDto, int subjectid)
         {
 
-            var subject = await _db.Subjects.FirstOrDefaultAsync(u => u.SubjectName_en == subjectname_en);
+            var subject = await _db.Subjects.FirstOrDefaultAsync(u => u.SubjectId == subjectid);
 
             if (subject == null)
             {
@@ -50,7 +54,9 @@ namespace EduSpaceEngine.Services.Learn.Lesson
             try
             {
                 LessonModel newLesson = _mapper.Map<LessonModel>(lessonDto);
+                newLesson.SubjectId = subject.SubjectId;
                 _db.Lessons.Add(newLesson);
+                _db.SaveChanges();
                 return new OkObjectResult(newLesson);
             }
             catch (Exception e)
@@ -59,24 +65,44 @@ namespace EduSpaceEngine.Services.Learn.Lesson
             }
         }
 
-        public Task<IActionResult> DeleteLessonAsync(int lessonId)
+        public async Task<IActionResult> DeleteLessonAsync(int lessonId)
         {
-
-            throw new NotImplementedException();
+            var lesson = _db.Lessons.FirstOrDefault(u => u.LessonId == lessonId);
+            if (lesson == null)
+            {
+                return new NotFoundObjectResult("Not Found");
+            }
+            try
+            {
+                _db.Lessons.Remove(lesson);
+                await _db.SaveChangesAsync();
+                return new OkObjectResult("Deleted Lesson");
+            }
+            catch(Exception e)
+            {
+                return new BadRequestObjectResult(e.Message);
+            }
         }
 
         public async Task<IActionResult> GetAllLessonsAsync()
         {
-            var lessons = await _db.Lessons
-               .Include(u => u.Subject)
-               .Include(u => u.LearnMaterial)
-               .ToListAsync();
-
-            if(lessons == null)
+           
+            try
             {
-                return new NotFoundObjectResult("Lessons not found");
+                var lessons = await _db.Lessons
+                  .Include(u => u.Subject)
+                  .Include(u => u.LearnMaterial)
+                  .ToListAsync();
+                if (lessons == null)
+                {
+                    return new NotFoundObjectResult("Lessons not found");
+                }
+                return new OkObjectResult(lessons);
             }
-            return new OkObjectResult(lessons);
+            catch (Exception e)
+            {
+                return new BadRequestObjectResult(e.Message);
+            }
         }
 
         public async Task<IActionResult> GetLessonByIdAsync(int lessonId)
@@ -103,7 +129,7 @@ namespace EduSpaceEngine.Services.Learn.Lesson
             }
             try
             {
-                lesson = _mapper.Map<LessonModel>(lessonDto);
+                _mapper.Map(lessonDto, lesson);
                 _db.Lessons.Update(lesson);
                 _db.SaveChanges();
                 return new OkObjectResult(lesson);

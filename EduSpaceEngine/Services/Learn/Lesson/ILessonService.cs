@@ -5,7 +5,7 @@ namespace EduSpaceEngine.Services.Learn.Lesson
 {
     public interface ILessonService
     {
-        Task<IActionResult> CreateLessonAsync(LessonDto lessonDto, string subjectname_en);
+        Task<IActionResult> CreateLessonAsync(LessonDto lessonDto, int subjectid);
 
         Task<IActionResult> GetLessonByIdAsync(int lessonId);
 
