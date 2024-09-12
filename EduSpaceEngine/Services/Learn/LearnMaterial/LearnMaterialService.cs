@@ -20,6 +20,11 @@ namespace EduSpaceEngine.Services.Learn.LearnMaterial
 
         public async Task<IActionResult> CreateLearnMaterialAsync(LearnMaterialDto learnMaterialDto, int lessonid)
         {
+
+            if(!_db.Lessons.Any(l => l.LessonId == lessonid))
+            {
+                return new NotFoundObjectResult("Lesson not found");
+            }
             var learnMaterial = _mapper.Map<LearnModel>(learnMaterialDto);
             learnMaterial.LessonId = lessonid;
             try
@@ -45,9 +50,9 @@ namespace EduSpaceEngine.Services.Learn.LearnMaterial
             return new OkObjectResult(learnMaterials);
         }
 
-        public async Task<IActionResult> DeleteLearnMaterialAsync(int lessonId)
+        public async Task<IActionResult> DeleteLearnMaterialAsync(int learnid)
         {
-            var learnMaterial = await _db.Learn.FirstOrDefaultAsync(lm => lm.LessonId == lessonId);
+            var learnMaterial = await _db.Learn.FirstOrDefaultAsync(lm => lm.LearnId == learnid);
             if (learnMaterial == null)
             {
                 return new NotFoundObjectResult("LearnMaterial not found");

@@ -63,15 +63,15 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ სასწავლო მასალას მისი უნიკალური იდენტიფიკატორით.
         /// </summary>
         /// <param name="id">სასწავლო მასალის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("LearnMaterialByLesson/{LessonId}")]
-        public async Task<ActionResult> GetLearnmaterial(int LessonId)
+        [HttpGet("LearnMaterialByLesson/{lessonid}")]
+        public async Task<ActionResult> GetLearnmaterial(int lessonid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _learnMaterialService.GetLearnMateriasByLessonId(LessonId);
+            var response = await _learnMaterialService.GetLearnMateriasByLessonId(lessonid);
             var res = new ResponseModel();
 
             switch (response)
@@ -101,15 +101,15 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ სასწავლო მასალას მისი უნიკალური იდენტიფიკატორით.
         /// </summary>
         /// <param name="id">სასწავლო მასალის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("LearnMaterial/{id}")]
-        public async Task<ActionResult<LearnModel>> GetLearn(int id)
+        [HttpGet("LearnMaterial/{learnid}")]
+        public async Task<ActionResult<LearnModel>> GetLearn(int learnid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _learnMaterialService.GetLearnMaterialByIdAsync(id);
+            var response = await _learnMaterialService.GetLearnMaterialByIdAsync(learnid);
             var res = new ResponseModel();
 
             switch (response)
@@ -180,15 +180,15 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="id">რედაქტირებადი სასწავლო მასალის უნიკალური იდენტიფიკატორი.</param>
         /// <param name="learn">სასწავლო მასალის განახლებული ინფორმაცია.</param>
-        [HttpPut("LearnMaterial/{id}"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> PutLearn(int id, LearnMaterialDto learn)
+        [HttpPut("LearnMaterial/{learnid}"), Authorize(Roles = "admin")]
+        public async Task<IActionResult> PutLearn(int learnid, LearnMaterialDto learn)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _learnMaterialService.UpdateLearnMaterialAsync(id, learn);
+            var response = await _learnMaterialService.UpdateLearnMaterialAsync(learnid, learn);
             var res = new ResponseModel();
 
             switch (response)
@@ -218,15 +218,15 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// შლის კონკრეტულ სასწავლო მასალას მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="id">სასწავლო მასალის უნიკალური იდენტიფიკატორი, რომელიც უნდა წაიშალოს.</param>
-        [HttpDelete("LearnMaterial/{id}"), Authorize(Roles = "admin")]
-        public async Task<IActionResult> DeleteLearn(int id)
+        [HttpDelete("LearnMaterial/{learnid}"), Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeleteLearn(int learnid)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _learnMaterialService.DeleteLearnMaterialAsync(id);
+            var response = await _learnMaterialService.DeleteLearnMaterialAsync(learnid);
             var res = new ResponseModel();
             switch (response)
             {
