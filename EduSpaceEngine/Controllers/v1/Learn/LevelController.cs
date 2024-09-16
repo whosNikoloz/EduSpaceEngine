@@ -21,7 +21,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             _levelService = levelService;
         }
 
-        [HttpGet("Levels")]
+        [HttpGet("levels")]
         public async Task<ActionResult<IEnumerable<LevelModel>>> Levels()
         {
             var response = await _levelService.GetAllLevelsAsync();
@@ -50,7 +50,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpGet("Level/{levelid}")]
+        [HttpGet("level/{levelid}")]
         public async Task<ActionResult<LevelModel>> Level(int levelid)
         {
             var response = await _levelService.GetLevelByIdAsync(levelid);
@@ -79,7 +79,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpPost("Level"), Authorize(Roles = "admin")]
+        [HttpPost("level"), Authorize(Roles = "admin")]
        // [Authorize(Roles = "admin")]
         public async Task<IActionResult> CreateLevel(LevelDto newLevel)
         {
@@ -109,7 +109,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpPut("Level/{levelid}")]
+        [HttpPut("level/{levelid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> EditLevel(LevelDto newLevel, int levelid)
         {
@@ -145,7 +145,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
 
         }
 
-        [HttpDelete("Level/{levelid}")]
+        [HttpDelete("level/{levelid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteLevel(int levelid)
         {

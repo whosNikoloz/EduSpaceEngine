@@ -18,7 +18,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
 {
     [ApiController]
     [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/[controller]")]
+    [Route("api/v{version:apiVersion}/")]
     public class NotificationController : ControllerBase
     {
         private readonly INotificationService _notificationService;
@@ -28,7 +28,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         }
 
         /// <param name="userId">მომხმარებლის ID, რომლისთვისაც უნდა მიიღოთ შეტყობინებები.</param>
-        [HttpGet("Notifications/{userId}"), Authorize]
+        [HttpGet("notifications/{userId}"), Authorize]
         public async Task<IActionResult> GetUserNotifications(int userId)
         {
             var UserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
