@@ -22,10 +22,16 @@ namespace EduSpaceEngine.Services.Learn.Level
         {
             if (_db.Levels.Any(u => u.LevelName_ka == levelDto.LevelName_ka))
             {
-                return new BadRequestObjectResult("Level Already Exsits");
+                return new BadRequestObjectResult("Level With LevelName_ka Already Exsits");
             }
 
-           LevelModel level = _mapper.Map<LevelModel>(levelDto);
+            if (_db.Levels.Any(u => u.LevelName_en == levelDto.LevelName_en))
+            {
+                return new BadRequestObjectResult("Level With LevelName_en Already Exsits");
+            }
+
+
+            LevelModel level = _mapper.Map<LevelModel>(levelDto);
 
             _db.Levels.Add(level);
 
@@ -66,7 +72,7 @@ namespace EduSpaceEngine.Services.Learn.Level
 
         public async Task<IActionResult> GetAllLevelsAsync()
         {
-            var levels = await _db.Levels.ToListAsync();
+            var levels = await _db.Levels.Include(c => c.Courses).ToListAsync();
             if(levels == null)
             {
                 return new NotFoundObjectResult("No Levels Found");

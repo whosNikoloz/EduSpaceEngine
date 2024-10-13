@@ -31,6 +31,7 @@ namespace EduSpaceEngine.Services.Learn.Course
             }
             var courses = await _db.Courses
                 .Include(u => u.Level)
+                .Include(u => u.Subjects)
                 .Where(u => u.LevelId == LevelId)
                 .ToListAsync();
             if(courses == null)
@@ -45,7 +46,17 @@ namespace EduSpaceEngine.Services.Learn.Course
         {
             if (_db.Courses.Any(u => u.CourseName_ka == courseDto.CourseName_ka))
             {
-                return new BadRequestObjectResult("Course Already Exists");
+                return new BadRequestObjectResult("Course With CourseName_ka Already Exists");
+            }
+
+            if (_db.Courses.Any(u => u.CourseName_en == courseDto.CourseName_en))
+            {
+                return new BadRequestObjectResult("Course With CourseName_en Already Exists");
+            }
+
+            if (_db.Courses.Any(u => u.FormattedCourseName == courseDto.FormattedCourseName))
+            {
+                return new BadRequestObjectResult("Course With FormattedCourseName Already Exists");
             }
             var levelExists = _db.Levels.Any(u => u.LevelId == levelId);
             if(!levelExists)
