@@ -25,7 +25,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             _courseService = courseService;
         }
 
-        [HttpGet("Courses")]
+        [HttpGet("courses")]
         public async Task<IActionResult> Courses()
         {
             var response = await _courseService.GetAllCoursesAsync();
@@ -60,7 +60,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpGet("CoursesByLevel/{levelId}")]
+        [HttpGet("{levelId}/course")]
         public async Task<IActionResult> CoursesByLevel(int levelId)
         {
             var response = await _courseService.GetCoursesByLevelAsync(levelId);
@@ -97,7 +97,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
 
 
 
-        [HttpGet("Courses/CourseName/{notFormattedCourseName}")]
+        [HttpGet("courseName/{notFormattedCourseName}")]
         public async Task<IActionResult> CourseFormattedName(string notFormattedCourseName, string lang = "ka")
         {
             var response = await _courseService.GetCourseFormattedNameAsync(notFormattedCourseName, lang);
@@ -136,7 +136,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ კურსს თავისი უნიკალური იდენტიფიკატორი
         /// </summary>
         /// <param name="courseid">კურსის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("Course/{courseName}")]
+        [HttpGet("course/{courseName}")]
         public async Task<IActionResult> Course(string courseName, string lang = "ka")
         {
             if (!ModelState.IsValid)
@@ -179,7 +179,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// Adds a new course.
         /// </summary>
         /// <param name="newCourseModel">დამატებული ახალი კურსის ინფორმაცია.</param>
-        [HttpPost("Course/{levelid}")]
+        [HttpPost("{levelid}/course")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> AddCourse(CourseDto newCourseModel,int levelid)
         {
@@ -225,7 +225,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="newcourse">კურსის განახლებული ინფორმაცია.</param>
         /// <param name="courseid">რედაქტირებადი კურსის უნიკალური იდენტიფიკატორი.</param>
-        [HttpPut("Courses/{courseid}")]
+        [HttpPut("course/{courseid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> EditCourse(CourseDto newcourse, int courseid)
         {
@@ -271,7 +271,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// შლის კონკრეტულ კურსს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="courseid">კურსის უნიკალური იდენტიფიკატორი, რომელიც უნდა წაიშალოს.</param>
-        [HttpDelete("Courses/{courseid}")]
+        [HttpDelete("course/{courseid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteCourse(int courseid)
         {

@@ -10,7 +10,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
 {
     [ApiController]
     [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/[controller]")]
+    [Route("api/v{version:apiVersion}/")]
     public class PostController : ControllerBase
     {
         private readonly IPostService _postService;
@@ -20,7 +20,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         }
 
 
-        [HttpGet("Posts")]
+        [HttpGet("posts")]
         public async Task<ActionResult<IEnumerable<object>>> GetPosts([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             // Await the result from GetPostsAsync
@@ -54,7 +54,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
 
 
 
-        [HttpGet("LastPost")]
+        [HttpGet("lastpost")]
         public async Task<ActionResult<object>> GetLastPost()
         {
             var response = await _postService.GetLastPostAsync();
@@ -90,7 +90,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// მიიღეთ კონკრეტული პოსტი მისი ID-ით.
         /// </summary>
         /// <param name="postId">მოსაბრუნებელი პოსტის ID.</param>
-        [HttpGet("Post/{postId}")]
+        [HttpGet("post/{postId}")]
         public async Task<IActionResult> GetPost(int postId)
         {
             var response = await _postService.GetPostAsync(postId);
@@ -124,7 +124,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// მიიღეთ პოსტები კონკრეტული თემით.
         /// </summary>
         /// <param name="subject">პოსტების გაფილტვრის საგანი.</param>
-        [HttpGet("Posts/{subject}")]
+        [HttpGet("{subject}/posts")]
         public async Task<IActionResult> PostsWithSubjeect(string subject, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var response = await _postService.GetPostsWithSubjectAsync(subject, page, pageSize);
@@ -159,7 +159,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// </summary>
         /// <param name="Post">პოსტის ინფორმაციის შექმნა.</param>
         /// <param name="Userid">პოსტის შემქმნელი მომხმარებლის ID.</param>
-        [HttpPost("Posts/"), Authorize]
+        [HttpPost("posts"), Authorize]
         public async Task<IActionResult> CreatePost(PostDto Post)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
@@ -204,7 +204,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// არსებული პოსტის რედაქტირება.
         /// </summary>
         /// <param name="EditedPost">რედაქტირებული პოსტის ინფორმაცია.</param>
-        [HttpPut("Posts"), Authorize]
+        [HttpPut("posts"), Authorize]
         public async Task<IActionResult> EditPost(PostDto EditedPost, int postId)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
@@ -245,7 +245,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// პოსტის წაშლა მისი ID-ით.
         /// </summary>
         /// <param name="postId">წაშლილი პოსტის ID.</param>
-        [HttpDelete("Posts/{postId}"), Authorize]
+        [HttpDelete("posts/{postId}"), Authorize]
         public async Task<IActionResult> DeletePost(int postId)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; // JWT id check

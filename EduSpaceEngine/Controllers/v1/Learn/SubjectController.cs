@@ -24,7 +24,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             _subjectService = subjectService;
         }
 
-        [HttpGet("Subjects")]
+        [HttpGet("subjects")]
         public async Task<ActionResult<IEnumerable<SubjectModel>>> Subjects()
         {
             var response = await _subjectService.GetAllSubjectsAsync();
@@ -58,7 +58,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ საგანს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="subjectid">სუბიექტის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("Subject/{subjectid}")]
+        [HttpGet("subject/{subjectid}")]
         public async Task<IActionResult> Subject(int subjectid)
         {
             var response = await _subjectService.GetSubjectByIdAsync(subjectid);
@@ -89,7 +89,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpGet("SubjectByCourse/{CourseId}")]
+        [HttpGet("{CourseId}/courses")]
         public async Task<IActionResult> SubjectByCourse(int CourseId)
         {
             var response = await _subjectService.GetSubjectsByCourseIdAsync(CourseId);
@@ -124,7 +124,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="newsubject">დამატებული ახალი თემის ინფორმაცია.</param>
         /// <param name="coursename">კურსის სახელწოდება, რომელსაც ეკუთვნის საგანი.</param>
-        [HttpPost("Subject"), Authorize(Roles = "admin")]
+        [HttpPost("subject"), Authorize(Roles = "admin")]
         public async Task<IActionResult> AddSubject(SubjectDto newsubject, int CourseId)
         {
             if (!ModelState.IsValid)
@@ -164,7 +164,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="newsubject">განახლებული ინფორმაცია თემისთვის.</param>
         /// <param name="subjectid">რედაქტირებადი საგნის უნიკალური იდენტიფიკატორი.</param>
-        [HttpPut("Subjects/{subjectid}")]
+        [HttpPut("subject/{subjectid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> EditSubject(SubjectDto newsubject, int subjectid)
         {
@@ -205,7 +205,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// შლის კონკრეტულ საგანს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="subjectid">წაშლილი საგნის უნიკალური იდენტიფიკატორი.</param>
-        [HttpDelete("Subjects/{subjectid}")]
+        [HttpDelete("subject/{subjectid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteSubject(int subjectid)
         {

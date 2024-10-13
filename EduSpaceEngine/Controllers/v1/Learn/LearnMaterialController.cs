@@ -29,7 +29,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// <summary>
         /// ამოიღებს სასწავლო მასალის ჩამონათვალს.
         /// </summary>
-        [HttpGet("LearnMaterials")]
+        [HttpGet("learnmaterials")]
         public async Task<ActionResult<IEnumerable<LearnModel>>> GetLearns()
         {
             var response = await _learnMaterialService.GetAllLearnMaterialAsync();
@@ -63,7 +63,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ სასწავლო მასალას მისი უნიკალური იდენტიფიკატორით.
         /// </summary>
         /// <param name="id">სასწავლო მასალის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("LearnMaterialByLesson/{lessonid}")]
+        [HttpGet("{lessonid}/learnmaterials")]
         public async Task<ActionResult> GetLearnmaterial(int lessonid)
         {
             if (!ModelState.IsValid)
@@ -101,7 +101,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ სასწავლო მასალას მისი უნიკალური იდენტიფიკატორით.
         /// </summary>
         /// <param name="id">სასწავლო მასალის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("LearnMaterial/{learnid}")]
+        [HttpGet("learnmaterial/{learnid}")]
         public async Task<ActionResult<LearnModel>> GetLearn(int learnid)
         {
             if (!ModelState.IsValid)
@@ -141,7 +141,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// <param name="learn">დამატებული ახალი სასწავლო მასალის ინფორმაცია.</param>
         /// <param name="subjectname">საგნის სახელწოდება, რომელსაც მიეკუთვნება სასწავლო მასალა.</param>
         /// <param name="coursename">კურსის სახელწოდება, რომელსაც მიეკუთვნება სასწავლო მასალა.</param>
-        [HttpPost("LearnMaterial"), Authorize(Roles = "admin")]
+        [HttpPost("learnmaterial"), Authorize(Roles = "admin")]
         public async Task<IActionResult> PostLearn(LearnMaterialDto learn, int LessonId)
         {
             if (!ModelState.IsValid)
@@ -180,7 +180,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="id">რედაქტირებადი სასწავლო მასალის უნიკალური იდენტიფიკატორი.</param>
         /// <param name="learn">სასწავლო მასალის განახლებული ინფორმაცია.</param>
-        [HttpPut("LearnMaterial/{learnid}"), Authorize(Roles = "admin")]
+        [HttpPut("learnmaterial/{learnid}"), Authorize(Roles = "admin")]
         public async Task<IActionResult> PutLearn(int learnid, LearnMaterialDto learn)
         {
             if (!ModelState.IsValid)
@@ -218,7 +218,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// შლის კონკრეტულ სასწავლო მასალას მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="id">სასწავლო მასალის უნიკალური იდენტიფიკატორი, რომელიც უნდა წაიშალოს.</param>
-        [HttpDelete("LearnMaterial/{learnid}"), Authorize(Roles = "admin")]
+        [HttpDelete("learnmaterial/{learnid}"), Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteLearn(int learnid)
         {
             if (!ModelState.IsValid)

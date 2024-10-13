@@ -25,7 +25,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             _lessonService = lessonService;
         }
 
-        [HttpGet("Lessons")]
+        [HttpGet("lessons")]
         public async Task<ActionResult<IEnumerable<LessonModel>>> Lessons()
         {
             var response = await _lessonService.GetAllLessonsAsync();
@@ -60,7 +60,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpGet("Lesson/{lessonid}")]
+        [HttpGet("lesson/{lessonid}")]
         public async Task<IActionResult> Lesson(int lessonid)
         {
             if (!ModelState.IsValid)
@@ -99,7 +99,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpGet("LessonBySubject/{subjectid}")]
+        [HttpGet("{subjectid}/lessons")]
         public async Task<IActionResult> LessonBySubject(int subjectid)
         {
             if (!ModelState.IsValid)
@@ -138,7 +138,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpPost("Lesson/{subjectid}"), Authorize(Roles = "admin")]
+        [HttpPost("lesson/{subjectid}"), Authorize(Roles = "admin")]
         public async Task<IActionResult> AddLesson(LessonDto newlesson, int subjectid)
         {
             if (!ModelState.IsValid)
@@ -178,7 +178,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpPut("Lessons/{lessonid}")]
+        [HttpPut("lesson/{lessonid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> EditLesson(LessonDto newlesson, int lessonid)
         {
@@ -217,7 +217,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             }
         }
 
-        [HttpDelete("Lessons/{lessonid}")]
+        [HttpDelete("lesson/{lessonid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteLesson(int lessonid)
         {

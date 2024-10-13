@@ -18,7 +18,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
 {
     [ApiController]
     [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/[controller]")]
+    [Route("api/v{version:apiVersion}/")]
     public class CommentController : ControllerBase
     {
         private readonly ICommentService _commentService;
@@ -28,7 +28,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         }
 
 
-        [HttpPost("Comments/{postid}"), Authorize]
+        [HttpPost("comments/{postid}"), Authorize]
         public async Task<IActionResult> CreateComment(CommentDto comment, int postid)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id check
@@ -110,7 +110,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// მიიღეთ კომენტარები კონკრეტული პოსტისთვის.
         /// </summary>
         /// <param name="postId">პოსტის ID კომენტარის მისაღებად.</param>
-        [HttpGet("Comments/{postId}")]
+        [HttpGet("{postId}/comments")]
         public async Task<IActionResult> GetComments(int postId)
         {
 
@@ -152,7 +152,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// </summary>
         /// <param name="commentId">წაშლილი კომენტარის ID.</param>
         /// <param name="userId">კომენტარს წაშლის მომხმარებლის ID.</param>
-        [HttpDelete("Comments/{commentId}"), Authorize]
+        [HttpDelete("comments/{commentId}"), Authorize]
         public async Task<IActionResult> DeleteComment(int commentId)
         {
             var UserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
@@ -193,7 +193,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// არსებული კომენტარის რედაქტირება.
         /// </summary>
         /// <param name="EditedComment">რედაქტირებული კომენტარის ინფორმაცია.</param>
-        [HttpPut("Comments"), Authorize]
+        [HttpPut("comments"), Authorize]
         public async Task<IActionResult> EditCommentar(CommentDto EditedComment, int commentid)
         {
 

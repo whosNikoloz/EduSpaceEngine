@@ -30,7 +30,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// <summary>
         /// ამოიღებს ტესტების სიას.
         /// </summary>
-        [HttpGet("Tests")]
+        [HttpGet("tests")]
         public async Task<ActionResult<IEnumerable<TestModel>>> GetTests()
         {
             if (!ModelState.IsValid)
@@ -69,7 +69,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამოიღებს კონკრეტულ ტესტს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="id">ტესტის უნიკალური იდენტიფიკატორი.</param>
-        [HttpGet("Tests/{testid}")]
+        [HttpGet("test/{testid}")]
         public async Task<ActionResult<TestModel>> GetTest(int testid)
         {
             if (!ModelState.IsValid)
@@ -105,7 +105,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
 
         }
 
-        [HttpGet("TestsByLearn/{learnid}")]
+        [HttpGet("{learnid}/tests")]
         public async Task<ActionResult<IEnumerable<TestModel>>> GetTestsByLearn(int learnid)
         {
             if (!ModelState.IsValid)
@@ -142,7 +142,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// ამატებს ახალ ტესტს.
         /// </summary>
         /// <param name="test">დამატებული ახალი ტესტის ინფორმაცია.</param>
-        [HttpPost("Tests/{learnid}"), Authorize(Roles = "admin")]
+        [HttpPost("tests/{learnid}"), Authorize(Roles = "admin")]
         public async Task<ActionResult<TestModel>> PostTest(TestDto test, int learnid)
         {
             if (!ModelState.IsValid)
@@ -181,7 +181,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// </summary>
         /// <param name="id">რედაქტირებადი ტესტის უნიკალური იდენტიფიკატორი.</param>
         /// <param name="test">ტესტის განახლებული ინფორმაცია.</param>
-        [HttpPut("Tests/{testid}"), Authorize(Roles = "admin")]
+        [HttpPut("tests/{testid}"), Authorize(Roles = "admin")]
         public async Task<IActionResult> PutTest(int testid, TestDto test)
         {
             if (!ModelState.IsValid)
@@ -219,7 +219,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
         /// შლის კონკრეტულ ტესტს მისი უნიკალური იდენტიფიკატორის მიხედვით.
         /// </summary>
         /// <param name="id">წაშლილი ტესტის უნიკალური იდენტიფიკატორი.</param>
-        [HttpDelete("Tests/{testid}"), Authorize(Roles = "admin")]
+        [HttpDelete("tests/{testid}"), Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteTest(int testid)
         {
             if (!ModelState.IsValid)
