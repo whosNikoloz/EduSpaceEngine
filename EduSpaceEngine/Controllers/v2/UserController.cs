@@ -1,7 +1,4 @@
-﻿using EduSpaceEngine.Model.User.LoginRequest;
-using EduSpaceEngine.Model.User.Password;
-using EduSpaceEngine.Model.User;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -20,6 +17,9 @@ using System;
 using AutoMapper;
 using Asp.Versioning;
 using EduSpaceEngine.Model;
+using EduSpaceEngine.Dto.User;
+using EduSpaceEngine.Dto.User.Password;
+using EduSpaceEngine.Dto.User.LoginRequest;
 
 namespace EduSpaceEngine.Controllers.v2
 {

@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
 using EduSpaceEngine.Dto;
 using EduSpaceEngine.Dto.Learn;
+using EduSpaceEngine.Dto.User;
 using EduSpaceEngine.Model;
 using EduSpaceEngine.Model.Learn;
 using EduSpaceEngine.Model.Learn.Test;
-using EduSpaceEngine.Model.User;
 
 namespace EduSpaceEngine.Profiles
 {

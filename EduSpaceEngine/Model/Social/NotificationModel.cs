@@ -1,5 +1,4 @@
-﻿using EduSpaceEngine.Model.User;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace EduSpaceEngine.Model.Social

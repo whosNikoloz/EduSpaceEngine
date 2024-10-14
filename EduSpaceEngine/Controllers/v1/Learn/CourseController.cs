@@ -1,13 +1,8 @@
 ﻿using Asp.Versioning;
-using EduSpaceEngine.Model.Learn;
-using EduSpaceEngine.Services.Learn.Level;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using EduSpaceEngine.Dto.Learn;
-using EduSpaceEngine.Model.Learn.Request;
-using Microsoft.EntityFrameworkCore;
 using EduSpaceEngine.Services.Learn.Course;
-using Azure.Core;
 using EduSpaceEngine.Dto;
 
 
@@ -172,6 +167,49 @@ namespace EduSpaceEngine.Controllers.v1.Learn
                     res.result = "Unexpected Error";
                     return BadRequest(res);
             }
+        }
+
+
+        [HttpPost("course/UploadLogo")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> UploadCourseLogo(UploadLogoRequest imagerequest)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var response = await _courseService.UploadCourseLogoAsync(imagerequest);
+
+            var res = new ResponseModel();
+
+            switch (response)
+            {
+                case NotFoundObjectResult notFound:
+                    res.status = false;
+                    res.result = notFound.Value?.ToString();
+                    return NotFound(res);
+
+                case BadRequestObjectResult badReq:
+                    res.status = false;
+                    res.result = badReq.Value?.ToString();
+                    return BadRequest(res);
+
+                case UnauthorizedObjectResult unResult:
+                    res.status = false;
+                    res.result = unResult.Value?.ToString();
+                    return Unauthorized(res);
+
+                case OkObjectResult okResult:
+                    res.status = true;
+                    res.result = okResult.Value;
+                    return Ok(res);
+                default:
+                    res.status = false;
+                    res.result = "Unexpected Error";
+                    return BadRequest(res);
+            }
+            return Ok();
         }
 
 

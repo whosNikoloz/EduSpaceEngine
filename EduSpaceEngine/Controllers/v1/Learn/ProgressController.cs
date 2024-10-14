@@ -2,7 +2,6 @@
 using EduSpaceEngine.Data;
 using EduSpaceEngine.Model.Learn;
 using EduSpaceEngine.Model.Learn.Request;
-using EduSpaceEngine.Model.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

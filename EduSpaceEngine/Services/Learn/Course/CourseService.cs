@@ -81,6 +81,31 @@ namespace EduSpaceEngine.Services.Learn.Course
 
         }
 
+
+        public async Task<IActionResult> UploadCourseLogoAsync(UploadLogoRequest imageRequest)
+        {
+
+            var course = await _db.Courses.FirstOrDefaultAsync(u => u.CourseId == imageRequest.CourseId);
+
+            if (course == null)
+            {
+                return new NotFoundObjectResult("course not found.");
+            }
+
+            course.CourseLogo = imageRequest.PictureUrl;
+
+            try
+            {
+                await _db.SaveChangesAsync();
+                return new OkObjectResult("Updated Success");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            }
+        }
+
         public async Task<IActionResult> DeleteCourseAsync(int courseId)
         {
             var course   = _db.Courses.FirstOrDefault(u => u.CourseId == courseId);

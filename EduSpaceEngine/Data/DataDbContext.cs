@@ -2,7 +2,6 @@
 using EduSpaceEngine.Model.Learn;
 using EduSpaceEngine.Model.Learn.Test;
 using EduSpaceEngine.Model.Social;
-using EduSpaceEngine.Model.User;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Diagnostics;
