@@ -13,7 +13,6 @@ namespace EduSpaceEngine.Dto
         public string? Role { get; set; }
         public string? OAuthProvider { get; set; } // Optional: include only if OAuth is relevant
         public string? OAuthProviderId { get; set; } // Optional: include only if OAuth is relevant
-        public string? VerificationToken { get; set; }
         public DateTime LastActivity { get; set; }
         public string Plan { get; set; } = "Basic";
     }

@@ -4,6 +4,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EduSpaceEngine.Model
 {
+
+    public enum UserRole
+    {
+        Admin,
+        User,
+        Guest,
+    }
     public class UserModel
     {
         [Key]
@@ -28,7 +35,9 @@ namespace EduSpaceEngine.Model
 
         public byte[] PasswordSalt { get; set; } = new byte[32];
 
-        public string? VerificationToken { get; set; }
+        public string? HashedOTP { get; set; }
+        public string? OTPSalt { get; set; }
+        public DateTime? OTPExpirationTime { get; set; }
 
         public DateTime VerifiedAt { get; set; }
 
@@ -36,7 +45,7 @@ namespace EduSpaceEngine.Model
 
         public DateTime? ResetTokenExpires { get; set; }
 
-        public string? Role { get; set; }
+        public UserRole Role { get; set; } = UserRole.Guest;
 
         // OAuth-specific properties
         public string? OAuthProvider { get; set; } // Store the OAuth provider (e.g., "Google")

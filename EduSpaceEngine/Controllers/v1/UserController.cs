@@ -11,6 +11,7 @@ using EduSpaceEngine.Dto.User.Password;
 using GreenDonut;
 using Azure;
 using EduSpaceEngine.Dto;
+using Microsoft.Extensions.Hosting;
 
 namespace EduSpaceEngine.Controllers
 {
@@ -236,17 +237,15 @@ namespace EduSpaceEngine.Controllers
                 return Ok(res);
             }
 
-
-            string host = "localhost:7213";
+            /*string host = "localhost:7213";
 
             string verificationLink = Url.ActionLink("VerifyEmail", "User", new { token = response.User.VerificationToken }, Request.Scheme, host);
 
 
-            await _emailService.SendVerificationEmailAsync(response.User.Email, response.User.UserName, verificationLink);
-
+            await _emailService.SendVerificationEmailAsync(response.User.Email, response.User.UserName, verificationLink);*/
 
             res.status = true;
-            res.result = "მომხმარებელი წარმატებით შეიქმნა. გასადასახელებლად გამოიგზავნეთ ელ. ფოსტა.";
+            res.result = "მომხმარებელი წარმატებით შეიქმნა.";
             return Ok(res);
         }
 
@@ -678,32 +677,70 @@ namespace EduSpaceEngine.Controllers
 
 
         // გადაამოწმეთ მომხმარებლის ელ.ფოსტის მისამართი ნიშნის გამოყენებით.
-        // GET api/Verify/Email
-        [HttpGet("Verify/Email")]
-        public async Task<IActionResult> VerifyEmail(string token)
+        // GET api/Verify?userId=1
+        [HttpGet("User/VerifyEmail")]
+        public async Task<IActionResult> VerifyEmail(int userId,string otp)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var response = await _userService.VerifyEmailAsync(token);
+            var response = await _userService.VerifyEmail(userId, otp);
 
-            if (!response)
+            if (response != string.Empty)
             {
                 return Ok(new
                 {
                     status = false,
-                    result = "Verification Failed"
+                    result = response
                 });
             }
 
+            return Ok(new
+            {
+                status = true,
+                result = "Verified"
+            });
+
             string verificationSuccessUrl = "https://edu-space.vercel.app/en/user/auth/verification-successful";
 
-            // Redirect the user to the verification success URL
             return Redirect(verificationSuccessUrl);
         }
 
+
+        // გადაამოწმეთ მომხმარებლის ელ.ფოსტის მისამართი ნიშნის გამოყენებით.
+        // GET api/requestVerification?userId=1
+        [HttpGet("User/requestVerification")]
+        public async Task<IActionResult> RequestVerification(int userId)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            /*var host = $"{Request.Scheme}://{Request.Host.Value}";
+
+            string verificationLink = Url.ActionLink("VerifyEmail", "User", new { token = response.User.VerificationOTP }, Request.Scheme, host);
+
+            var res = await _emailService.SendVerificationEmailAsync(response.User.Email, response.User.UserName, verificationLink);*/
+
+            var res = await _userService.RequestVerify(userId);
+
+            if (res != String.Empty)
+            {
+                return Ok(new
+                {
+                    status = false,
+                    result = res
+                });
+            }
+            return Ok(new
+            {
+                status = true,
+                result = "Verified"
+            });
+        }
 
 
         // მოითხოვეთ პაროლის აღდგენა ელექტრონული ფოსტით.
@@ -810,7 +847,7 @@ namespace EduSpaceEngine.Controllers
                     res.status = false;
                     res.result = notFound.Value?.ToString();
                     return NotFound(res);
-
+                        
                 case BadRequestObjectResult badReq:
                     res.status = false;
                     res.result = badReq.Value?.ToString();
@@ -846,7 +883,7 @@ namespace EduSpaceEngine.Controllers
                 return BadRequest(ModelState);
             }
 
-            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
+            var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; 
             var response = await _userService.ChangeEmailAsync(email, Int32.Parse(userId));
             var res = new ResponseModel();
 

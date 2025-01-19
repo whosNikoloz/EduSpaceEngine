@@ -28,7 +28,9 @@ namespace EduSpaceEngine.Services.User
         Task<IActionResult> ChangePasswordAsync(ChangePasswordRequest request, int userId, string JWTRole);
         Task<IActionResult> ChangeUsernameOrPhoneNumberAsync(UserModel requestUser, int userId, string JWTRole);
         Task<IActionResult> UploadUserProfileImageAsync(UploadImageRequest imageRequest, int userId, string JWTRole);
-        Task<bool> VerifyEmailAsync(string token);
+        Task<string> RequestVerify(int userId);
+        Task<string> VerifyEmail(int userId, string otp);
+
         Task<IActionResult> ForgotPasswordRequestAsync(string email);
         Task<IActionResult> ResetPasswordAsync(ResetPasswordRequest request);
         Task<IActionResult> ChangeEmailRequestAsync(string email, int userid);

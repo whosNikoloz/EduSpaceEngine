@@ -28,7 +28,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         }
 
 
-        [HttpPost("comments/{postid}"), Authorize]
+        [HttpPost("{postid}/comment"), Authorize]
         public async Task<IActionResult> CreateComment(CommentDto comment, int postid)
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id check
@@ -152,7 +152,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// </summary>
         /// <param name="commentId">წაშლილი კომენტარის ID.</param>
         /// <param name="userId">კომენტარს წაშლის მომხმარებლის ID.</param>
-        [HttpDelete("comments/{commentId}"), Authorize]
+        [HttpDelete("comment/{commentId}"), Authorize]
         public async Task<IActionResult> DeleteComment(int commentId)
         {
             var UserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; //JWT id ჩეკავს
@@ -193,7 +193,7 @@ namespace EduSpaceEngine.Controllers.v1.Social
         /// არსებული კომენტარის რედაქტირება.
         /// </summary>
         /// <param name="EditedComment">რედაქტირებული კომენტარის ინფორმაცია.</param>
-        [HttpPut("comments"), Authorize]
+        [HttpPut("comment/{commentId}"), Authorize]
         public async Task<IActionResult> EditCommentar(CommentDto EditedComment, int commentid)
         {
 

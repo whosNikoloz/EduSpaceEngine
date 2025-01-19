@@ -41,7 +41,11 @@ namespace EduSpaceEngine.Services.User
             }
 
             // Send a warning email to the current email address
-            await _emailService.SendWarningEmailAsync(user.Email, user.UserName);
+            var resWarEmail = await _emailService.SendWarningEmailAsync(user.Email, user.UserName);
+            if(resWarEmail != string.Empty)
+            {
+                return new BadRequestObjectResult("An error occurred while sending the email");
+            }
 
             // Check if the new email is already registered
             if (_db.Users.Any(u => u.Email == email && u.OAuthProvider == null))
@@ -54,7 +58,12 @@ namespace EduSpaceEngine.Services.User
             int verificationCode = random.Next(1000, 10000);
 
             // Send the verification code to the new email address
-            await _emailService.SendChangeEmailCodeAsync(email, user.UserName, verificationCode);
+            var resEmail = await _emailService.SendChangeEmailCodeAsync(email, user.UserName, verificationCode);
+
+            if (resEmail != string.Empty)
+            {
+                return new BadRequestObjectResult(resEmail);
+            }
 
             try
             {
@@ -80,7 +89,11 @@ namespace EduSpaceEngine.Services.User
             }
             //პირველად გაიგზავნოს ძველ მაილზე გაფრთხილება
 
-            await _emailService.SendWarningEmailAsync(user.Email, user.UserName);
+            var resWarEmail = await _emailService.SendWarningEmailAsync(user.Email, user.UserName);
+            if (resWarEmail != string.Empty)
+            {
+                return new BadRequestObjectResult(resWarEmail);
+            }
 
             if (_db.Users.Any(u => u.Email == email && u.OAuthProvider == null))
             {
@@ -92,8 +105,12 @@ namespace EduSpaceEngine.Services.User
 
             int verificationCode = random.Next(1000, 10000);
 
-            await _emailService.SendWarningEmailAsync(user.Email, user.UserName);
-            try
+            var resVerEmail =  await _emailService.SendChangeEmailCodeAsync(email, user.UserName, verificationCode);
+            if(resVerEmail != string.Empty)
+            {
+                return new BadRequestObjectResult(resVerEmail);
+            }
+           /* try
             {
                 await _db.SaveChangesAsync();
             }
@@ -101,8 +118,7 @@ namespace EduSpaceEngine.Services.User
             {
                 Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
-            }
-
+            }*/
 
             return new OkObjectResult(new { VerificationCode = verificationCode });
         }
@@ -240,12 +256,9 @@ namespace EduSpaceEngine.Services.User
 
         public async Task<bool> CheckEmailRegistrationAsync(CheckEmailRequest request)
         {
-            bool emailExists = await _db.Users.AnyAsync(u => u.Email == request.Email && u.OAuthProvider == null);
-            if (emailExists)
-            {
-                return false;
-            }
-            return true;
+            bool emailExists = await _db.Users.AnyAsync(u => u.Email == request.Email && u.OAuthProvider == null && u.VerifiedAt != DateTime.MinValue);
+            
+            return emailExists;
         }
 
         public async Task<bool> CheckOAuth2ExistAsync(CheckOauth2ExistsReqeust request)
@@ -264,12 +277,7 @@ namespace EduSpaceEngine.Services.User
         {
             bool usernameExists = await _db.Users.AnyAsync(u => u.UserName == username);
 
-            if (usernameExists)
-            {
-                return false;
-            }
-
-            return true;
+            return usernameExists;
         }
 
         public async Task<IActionResult> DeleteUserAsync(int userId)
@@ -324,6 +332,12 @@ namespace EduSpaceEngine.Services.User
             }
 
             await _emailService.SendEmailAsync(email, user.UserName, verificationLink);
+
+            var resEmail = await _emailService.SendEmailAsync(email, user.UserName, verificationLink);
+            if(resEmail != string.Empty)
+            {
+                return new BadRequestObjectResult(resEmail);
+            }
 
             return new OkObjectResult($"You may reset your password now.");
         }
@@ -428,7 +442,7 @@ namespace EduSpaceEngine.Services.User
                 };
             }
 
-            if (user.VerifiedAt == DateTime.MinValue)
+            /*if (user.VerifiedAt == DateTime.MinValue)
             {
                 return new ResponseUser
                 {
@@ -436,7 +450,7 @@ namespace EduSpaceEngine.Services.User
                     Token = null,
                     Error = "User Not Verified"
                 };
-            }
+            }*/
 
             string jwttoken = _staticFuncs.CreateToken(user);
 
@@ -562,7 +576,6 @@ namespace EduSpaceEngine.Services.User
             user.OAuthProviderId = request.oAuthProviderId;
             user.Picture = request.picture;
             user.Email = request.email;
-            user.VerificationToken = _staticFuncs.CreateRandomToken();
             user.UserName = uniqueUsername;
             user.FirstName = firstName;
             user.LastName = lastName;
@@ -571,12 +584,12 @@ namespace EduSpaceEngine.Services.User
 
             if (!_db.Users.Any())
             {
-                user.Role = "admin"; // Assign "admin" role
+                user.Role = UserRole.Admin; 
 
             }
             else
             {
-                user.Role = "user"; // Assign "user" role
+                user.Role = UserRole.User; 
             }
 
             user.VerifiedAt = DateTime.Now;
@@ -616,55 +629,89 @@ namespace EduSpaceEngine.Services.User
 
         public async Task<ResponseUser> RegisterUserAsync(UserRegisterRequest request)
         {
-            if (_db.Users.Any(u => u.Email == request.Email && u.OAuthProvider == null) || _db.Users.Any(u => u.UserName == request.UserName))
+            var existingUser = _db.Users
+                .Include(u => u.Enrollments)
+                .Include(u => u.Notifications)
+                .Include(u => u.Posts)
+                .Include(u => u.Comments)
+                .Include(u => u.Progresses)
+                .FirstOrDefault(u => u.Email == request.Email && u.OAuthProvider == null);
+
+            if (existingUser != null)
+            {
+                _db.CourseEnroll.RemoveRange(existingUser.Enrollments);
+                _db.Notifications.RemoveRange(existingUser.Notifications);
+                _db.Posts.RemoveRange(existingUser.Posts);
+                _db.Comments.RemoveRange(existingUser.Comments);
+                _db.Progress.RemoveRange(existingUser.Progresses);
+
+                _db.Users.Remove(existingUser);
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Exception occurred during deletion: " + ex.Message);
+                    return new ResponseUser
+                    {
+                        User = null,
+                        Token = null,
+                        Error = "An error occurred while deleting the existing user."
+                    };
+                }
+            }
+
+            // Check if username is already taken
+            if (_db.Users.Any(u => u.UserName == request.UserName))
             {
                 return new ResponseUser
                 {
                     User = null,
                     Token = null,
-                    Error = "User (Email or Username) already exists."
+                    Error = "Username is already taken."
                 };
-
             }
 
+            // Create a new user
             _staticFuncs.CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
-            UserModel user = new UserModel();
-
-            user.Email = request.Email;
-            user.UserName = request.UserName;
-            user.FirstName = request.FirstName;
-            user.LastName = request.LastName;
-            user.OAuthProvider = null;
-            user.OAuthProviderId = null;
-            user.PasswordHash = passwordHash;
-            user.PasswordSalt = passwordSalt;
-            user.VerificationToken = _staticFuncs.CreateRandomToken();
+            UserModel user = new UserModel
+            {
+                Email = request.Email,
+                UserName = request.UserName,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                OAuthProvider = null,
+                OAuthProviderId = null,
+                PasswordHash = passwordHash,
+                PasswordSalt = passwordSalt,
+                LastActivity = DateTime.UtcNow 
+            };
 
             if (!_db.Users.Any())
             {
-                user.Role = "admin"; // Assign "admin" role
+                user.Role = UserRole.Admin;
             }
             else
             {
-                user.Role = "user"; // Assign "user" role
+                user.Role = UserRole.Guest;
             }
 
             try
             {
-
                 await _db.Users.AddAsync(user);
                 await _db.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Exception occurred during SaveChangesAsync: " + ex.Message);
-
                 return new ResponseUser
                 {
                     User = null,
                     Token = null,
-                    Error = "An error occurred while saving changes."
+                    Error = "An error occurred while saving the new user."
                 };
             }
 
@@ -677,6 +724,7 @@ namespace EduSpaceEngine.Services.User
                 Error = null
             };
         }
+
 
         public async Task<IActionResult> ReLoginAsync(string password, int userId)
         {
@@ -796,23 +844,64 @@ namespace EduSpaceEngine.Services.User
             }
         }
 
-        public async Task<bool> VerifyEmailAsync(string token)
+
+        public async Task<string> VerifyEmail(int userId, string otp)
         {
-            var user = await
-                _db.Users.FirstOrDefaultAsync(u => u.VerificationToken == token);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
 
             if (user == null)
             {
-                return false;
+                return "User Not Found";
             }
 
-            user.VerifiedAt = DateTime.Now;
-            await _db.SaveChangesAsync();
+            if (DateTime.UtcNow > user.OTPExpirationTime)
+            {
+                return "OTP Expired";
+            }
 
+            var hashedEnteredOtp = _staticFuncs.VerifyOtp(otp, user.OTPSalt);
+
+            if (hashedEnteredOtp == user.HashedOTP)
+            {
+                user.Role = user.Role != UserRole.Admin ? UserRole.User : UserRole.Admin;
+                user.VerifiedAt = DateTime.UtcNow; 
+                await _db.SaveChangesAsync();
+                return String.Empty;
+            }
+
+            return "Wrong OTP";
+        }
+
+        public async Task<string> RequestVerify(int userId)
+        {
+            var user = await
+                _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+
+            if (user == null)
+            {
+                return "User Not Found";
+            }
+            var otp = _staticFuncs.GenerateOtp();
+            
+            var salt = _staticFuncs.GenerateOTPSalt();
+
+            string hashedOtp = _staticFuncs.VerifyOtp(otp, salt);
+
+            user.OTPSalt = salt;
+            user.HashedOTP = hashedOtp;
+            user.OTPExpirationTime = DateTime.UtcNow.AddMinutes(5);
+
+            var respEmail = await _emailService.SendVerificationEmailAsync(user.Email, user.UserName, otp);
+
+            if(respEmail != string.Empty)
+            {
+                return respEmail;
+            }
+            await _db.SaveChangesAsync();
             //string verificationSuccessUrl = "https://edu-space.vercel.app/en/user/auth/verification-successful";
 
             // Redirect the user to the verification success URL
-            return true;
+            return string.Empty;
         }
     }
 }

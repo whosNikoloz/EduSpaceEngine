@@ -15,7 +15,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
 {
     [ApiController]
     [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/[controller]")]
+    [Route("api/v{version:apiVersion}")]
     public class ProgressController : ControllerBase
     {
         private readonly DataDbContext _context;
@@ -27,7 +27,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             _context = context;
         }
 
-        [HttpGet("GetAllProgress"), Authorize]
+        [HttpGet("progresses"), Authorize]
         public async Task<IActionResult> GetAllProgress()
         {
             var userId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value; // JWT id check
@@ -74,7 +74,7 @@ namespace EduSpaceEngine.Controllers.v1.Learn
             return Ok("Progress deleted.");
         }
 
-        [HttpGet("GetProgress"), Authorize]
+        [HttpGet("progress"), Authorize]
         public async Task<IActionResult> GetProgress([FromQuery] ProgressRequest request)
         {
             if (!ModelState.IsValid)

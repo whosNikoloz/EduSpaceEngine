@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace EduSpaceEngine.Services.Static
 {
@@ -29,25 +30,44 @@ namespace EduSpaceEngine.Services.Static
             return Convert.ToHexString(RandomNumberGenerator.GetBytes(64));
         }
 
+        public string GenerateOtp()
+        {
+            var otp = RandomNumberGenerator.GetInt32(1000, 9999).ToString();
+            return otp;
+        }
+
+        public string VerifyOtp(string otp, string salt)
+        {
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(salt)))
+            {
+                var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(otp));
+                return Convert.ToBase64String(hash);
+            }
+        }
+        public string GenerateOTPSalt()
+        {
+            return Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+        }
+
         public string CreateToken(UserModel user)
         {
             List<Claim> claims;
             try
             {
                 claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new Claim(ClaimTypes.Email, user.Email != null ? user.Email : ""),
-                new Claim(ClaimTypes.Name, user.FirstName != null ? user.FirstName : ""),
-                new Claim(ClaimTypes.Surname, user.LastName != null ? user.LastName : ""),
-                new Claim(ClaimTypes.NameIdentifier, user.UserName != null ? user.UserName : ""),
-                new Claim(ClaimTypes.MobilePhone, user.PhoneNumber != null ? user.PhoneNumber : "" ),
-                new Claim("ProfilePicture", user.Picture != null ? user.Picture : ""),
-                new Claim("joinedAt", user.VerifiedAt.ToString()),
-                new Claim("Oauth", user.OAuthProvider == null ? "" : user.OAuthProvider),
-                new Claim(ClaimTypes.Role, user.Role != null ? user.Role : ""),
-                new Claim("Plan", user.Plan != null ? user.Plan : ""),
-            };
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email != null ? user.Email : ""),
+                    new Claim(ClaimTypes.Name, user.FirstName != null ? user.FirstName : ""),
+                    new Claim(ClaimTypes.Surname, user.LastName != null ? user.LastName : ""),
+                    new Claim(ClaimTypes.NameIdentifier, user.UserName != null ? user.UserName : ""),
+                    new Claim(ClaimTypes.MobilePhone, user.PhoneNumber != null ? user.PhoneNumber : "" ),
+                    new Claim("ProfilePicture", user.Picture != null ? user.Picture : ""),
+                    new Claim("joinedAt", user.VerifiedAt.ToString()),
+                    new Claim("Oauth", user.OAuthProvider == null ? "" : user.OAuthProvider),
+                    new Claim(ClaimTypes.Role, user.Role.ToString() != null ? user.Role.ToString() : "guest"),
+                    new Claim("Plan", user.Plan != null ? user.Plan : ""),
+                };
             }
             catch (Exception ex)
             {
